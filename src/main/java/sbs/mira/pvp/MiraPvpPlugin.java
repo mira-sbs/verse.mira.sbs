@@ -35,9 +35,9 @@ class MiraPvpPlugin
     super.breathe(new MiraPvpPulse(this, master));
     master.breathe(pulse());
     
-    register_module(CommandUtility.class);
-    register_module(StatsCommandUtility.class);
-    register_module_commands();
+    register_command_module( CommandUtility.class);
+    register_command_module( StatsCommandUtility.class);
+    register_commands();
     
     pulse().master().match().firstMatch(); // Start the special first round procedure to kick off the cycle.
   }
