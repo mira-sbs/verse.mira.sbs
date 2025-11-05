@@ -5,7 +5,7 @@ import sbs.mira.pvp.framework.game.WarTeam;
 import sbs.mira.pvp.framework.stored.SerializedLocation;
 import sbs.mira.pvp.framework.MiraPulse;
 import sbs.mira.pvp.game.Gamemode;
-import sbs.mira.pvp.MiraPvpMaster;
+import sbs.mira.pvp.MiraVerseModel;
 import sbs.mira.pvp.util.WoolColor;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
@@ -123,9 +123,9 @@ public class KoTH extends Gamemode {
      */
     private void doFireworks() {
         if (holder == null) // Spawn white.
-            ((MiraPvpMaster) main).entity().spawnFirework(flag.clone().add(0.5, 1, 0.5), ChatColor.WHITE);
+            (( MiraVerseModel ) main).entities( ).spawnFirework( flag.clone( ).add( 0.5, 1, 0.5 ), ChatColor.WHITE );
         else
-            ((MiraPvpMaster) main).entity().spawnFirework(flag.clone().add(0.5, 1, 0.5), holder.getTeamColor());
+            (( MiraVerseModel ) main).entities( ).spawnFirework( flag.clone( ).add( 0.5, 1, 0.5 ), holder.getTeamColor( ) );
     }
 
     public void updateScoreboard() {

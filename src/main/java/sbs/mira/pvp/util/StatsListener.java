@@ -1,14 +1,14 @@
 package sbs.mira.pvp.util;
 
-import sbs.mira.pvp.MiraPvpMaster;
-import sbs.mira.pvp.MiraPvpPlayer;
+import sbs.mira.pvp.MiraVerseModel;
+import sbs.mira.pvp.MiraVersePlayer;
 import sbs.mira.pvp.framework.MiraPlayer;
 import sbs.mira.pvp.framework.event.MatchEndEvent;
 import sbs.mira.pvp.framework.event.MatchPlayerDeathEvent;
 import sbs.mira.pvp.framework.MiraPulse;
 import sbs.mira.pvp.framework.util.WarMatch;
 import sbs.mira.pvp.framework.MiraModule;
-import sbs.mira.pvp.game.Map;
+import sbs.mira.pvp.model.map.MiraMapModelConcrete;
 import sbs.mira.pvp.stats.WarStats;
 import com.vexsoftware.votifier.model.VotifierEvent;
 import org.bukkit.*;
@@ -50,23 +50,24 @@ public class StatsListener extends MiraModule implements Listener {
 
     @EventHandler
     public void onServerList(ServerListPingEvent event) {
-        Map map = (Map) mira().cache().getCurrentMap();
+        MiraMapModelConcrete map = ( MiraMapModelConcrete ) mira( ).cache( ).getCurrentMap( );
         String state;
         switch (mira().match().getStatus()) {
             case CYCLE:
-                state = map.getMapName() + GRAY + " (cycling)";
+                state = map.label( ) + GRAY + " (cycling)";
                 break;
             case VOTING:
-                state = map.getMapName() + GRAY + " (in a vote)";
+                state = map.label( ) + GRAY + " (in a vote)";
                 break;
             case STARTING:
                 if (Bukkit.getOnlinePlayers().size() > 0)
-                    state = map.getMapName() + GRAY + " (starting)";
+                    state = map.label( ) + GRAY + " (starting)";
                 else
-                    state = map.getMapName() + GRAY + " (waiting for players)";
+                    state = map.label( ) + GRAY + " (waiting for players)";
                 break;
             case PLAYING:
-                state = map.getMapName() + GRAY + " (" + mira().strings().getDigitalTime((int) (map.getMatchDuration() - mira().match().getCurrentMode().getTimeElapsed())) + ") (" + mira().match().getCurrentMode().getName() + ")";
+                state = map.label( ) + GRAY + " (" + mira( ).strings( ).getDigitalTime( (int) ( map.match_duration(
+                  900 ) - mira( ).match( ).getCurrentMode( ).getTimeElapsed( )) ) + ") (" + mira( ).match( ).getCurrentMode( ).getName( ) + ")";
                 break;
             default:
                 state = RED + "Server is non-functional";
@@ -88,19 +89,19 @@ public class StatsListener extends MiraModule implements Listener {
         try {
 
             // Checks if the player has stats recorded already.
-            PreparedStatement stats = ((MiraPvpMaster) mira()).query().prepare("SELECT * FROM `WarStats` WHERE `player_uuid`=?");
+            PreparedStatement stats = (( MiraVerseModel ) mira( )).db( ).prepare( "SELECT * FROM `WarStats` WHERE `player_uuid`=?" );
             stats.setString(1, event.getUniqueId().toString());
             ResultSet check = stats.executeQuery(); // Execute the check and get our result.
 
             if (check.next()) {
                 mira().plugin().log(event.getName() + " had previous stats, retrieving...");
-                ((MiraPvpMaster) mira()).putTempStats(event.getUniqueId(), new WarStats((MiraPvpMaster) mira(), event.getUniqueId(),
-                        check.getInt("kills"), check.getInt("deaths"),
-                        check.getInt("highestStreak"), check.getInt("matchesPlayed"),
-                        check.getInt("revives")));
+                (( MiraVerseModel ) mira( )).putTempStats( event.getUniqueId( ), new WarStats( ( MiraVerseModel ) mira( ), event.getUniqueId( ),
+                                                                                               check.getInt("kills"), check.getInt("deaths"),
+                                                                                               check.getInt("highestStreak"), check.getInt("matchesPlayed"),
+                                                                                               check.getInt("revives")) );
             } else {
                 mira().plugin().log("Creating statistics record for " + event.getName());
-                PreparedStatement newStats = ((MiraPvpMaster) mira()).query().prepare("INSERT INTO `WarStats` (`player_uuid`) VALUES (?)");
+                PreparedStatement newStats = (( MiraVerseModel ) mira( )).db( ).prepare( "INSERT INTO `WarStats` (`player_uuid`) VALUES (?)" );
                 newStats.setString(1, event.getUniqueId().toString());
                 newStats.executeUpdate(); // Execute our insertion query.
                 newStats.close(); // Close the prepared statement.
@@ -136,11 +137,11 @@ public class StatsListener extends MiraModule implements Listener {
         if (status == WarMatch.Status.STARTING || status == WarMatch.Status.PLAYING || status == WarMatch.Status.CYCLE)
             target.teleport(mira().cache().getCurrentMap().getSpectatorSpawn()); // Spawn them in the current defined map.
         else if (status == WarMatch.Status.VOTING)
-            target.teleport(((Map) mira().cache().getMap(mira().match().getPreviousMap())).getSpectatorSpawn_()); // Spawn them in the previous defined map.
+            target.teleport((( MiraMapModelConcrete ) mira( ).cache( ).getMap( mira( ).match( ).getPreviousMap( ) )).getSpectatorSpawn_( ) ); // Spawn them in the previous defined map.
 
         if (status != WarMatch.Status.PLAYING) {
-            event.getPlayer().setScoreboard(((Match) mira().match()).s()); // Show the default scoreboard.
-            ((Match) mira().match()).s().getTeam("PostSpectators").addEntry(event.getPlayer().getName()); // Add them to this scoreboard.
+            event.getPlayer().setScoreboard((( MatchController ) mira().match()).s()); // Show the default scoreboard.
+            (( MatchController ) mira().match()).s().getTeam( "PostSpectators").addEntry( event.getPlayer().getName()); // Add them to this scoreboard.
             //TODO: Add them as spectators???
         } else
             event.getPlayer().setScoreboard(mira().match().getCurrentMode().s()); // Show the gamemode's scoreboard.
@@ -163,11 +164,11 @@ public class StatsListener extends MiraModule implements Listener {
 
     @EventHandler
     public void onDeath(MatchPlayerDeathEvent event) {
-        WarStats dead = ((MiraPvpPlayer) event.getPlayer()).stats();
+        WarStats dead = (( MiraVersePlayer ) event.getPlayer( )).stats( );
         dead.addDeath();
 
         if (event.getKiller() != null) {
-            WarStats killer = ((MiraPvpPlayer) event.getKiller()).stats();
+            WarStats killer = (( MiraVersePlayer ) event.getKiller( )).stats( );
             killer.addKill();
             Player target = event.getKiller().crafter();
             if (killer.getCurrentStreak() % 5 == 0) {
@@ -188,7 +189,7 @@ public class StatsListener extends MiraModule implements Listener {
     public void onMatchEnd(MatchEndEvent event) {
         for (MiraPlayer pl : mira().getWarPlayers().values())
             if (pl.is_member_of_team())
-                ((MiraPvpPlayer) pl).stats().addMatchPlayed();
+                (( MiraVersePlayer ) pl).stats( ).addMatchPlayed( );
     }
 
     /* Voting storage and rewards. */
@@ -231,7 +232,7 @@ public class StatsListener extends MiraModule implements Listener {
                 online.sendMessage(mira().message("votifier.self"));
 
         // Spawn a congratulatory firework.
-        ((MiraPvpMaster) mira()).entity().spawnFirework(target.getLocation());
-        ((MiraPvpPlayer) mira().getWarPlayer(target)).stats().addRevive();
+        (( MiraVerseModel ) mira( )).entities( ).spawnFirework( target.getLocation( ) );
+        (( MiraVersePlayer ) mira( ).getWarPlayer( target )).stats( ).addRevive( );
     }
 }

@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
 import sbs.mira.pvp.framework.game.WarTeam;
 import sbs.mira.pvp.framework.stored.SerializedLocation;
 import sbs.mira.pvp.game.Gamemode;
-import sbs.mira.pvp.game.Map;
+import sbs.mira.pvp.model.map.MiraMapModelConcrete;
 import sbs.mira.pvp.game.modes.DDM;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -19,7 +19,8 @@ import org.bukkit.potion.PotionEffectType;
 import java.util.UUID;
 
 @SuppressWarnings("Duplicates")
-public class ConvenienceWars extends Map {
+public class ConvenienceWars extends MiraMapModelConcrete
+{
 
     private final UUID[] creators = {id("2e1c067c-6f09-4db0-8cd7-defc12ce622e")};
     private final String mapName = "Convenience Wars";
@@ -30,17 +31,17 @@ public class ConvenienceWars extends Map {
 
     private final ItemStack GADGET = createGadget(Material.SULPHUR, 2, 0, "Emergency Exit", "Sends you flying backward");
 
-    protected void readyAttributes() {
-        setMapName(mapName);
-        setCreators(creators);
-        setGamemodes(gamemodes);
-        registerTeam(team1);
-        registerTeam(team2);
+    protected void define_rules( ) {
+        label( mapName );
+        creators( creators );
+        game_modes( gamemodes );
+        team( team1 );
+        team( team2 );
         setAllowBuild(false, false);
         objectives().add(new DDM.Territory(123, 20, -37, 123, 22, -35, team1, main));
         objectives().add(new DDM.Territory(26, 20, -34, 26, 22, -32, team2, main));
-        setTimeLockTime(18000);
-        setMatchDuration(450);
+        time_lock_time( 18000 );
+        match_duration( 450 );
     }
 
     protected void readySpawns() {
@@ -62,7 +63,7 @@ public class ConvenienceWars extends Map {
         addTeamSpawn(team2, new SerializedLocation(31.5, 20, -53.5, 0, 0));
         addTeamSpawn(team2, new SerializedLocation(23.5, 20, -53.5, 0, 0));
 
-        setSpectatorSpawn(new SerializedLocation(75, 23, -1.5, 180, 0));
+        spectator_spawn_position( new SerializedLocation( 75, 23, -1.5, 180, 0) );
     }
 
     @Override

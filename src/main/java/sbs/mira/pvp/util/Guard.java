@@ -1,6 +1,6 @@
 package sbs.mira.pvp.util;
 
-import sbs.mira.pvp.MiraPvpMaster;
+import sbs.mira.pvp.MiraVerseModel;
 import sbs.mira.pvp.framework.MiraPlayer;
 import sbs.mira.pvp.framework.MiraPulse;
 import sbs.mira.pvp.framework.util.WarMatch;
@@ -132,12 +132,12 @@ public class Guard extends MiraModule implements Listener {
             if (event.getPlayer().getItemInHand().getType() == Material.WRITTEN_BOOK)
                 openBook(event.getPlayer());
         }
-        if (event.getPlayer().getItemInHand().equals(((MiraPvpMaster) mira()).SKYBLOCK)) {
+        if (event.getPlayer().getItemInHand().equals((( MiraVerseModel ) mira( )).SKYBLOCK )) {
             ByteArrayDataOutput out = ByteStreams.newDataOutput();
             out.writeUTF("Connect");
             out.writeUTF("skyblock");
             event.getPlayer().sendPluginMessage(mira().plugin(), "BungeeCord", out.toByteArray());
-        } else if (event.getPlayer().getItemInHand().equals(((MiraPvpMaster) mira()).VOTE)) {
+        } else if (event.getPlayer().getItemInHand().equals((( MiraVerseModel ) mira( )).VOTE )) {
             TextComponent cmp = new TextComponent("   \n    " + ChatColor.GREEN + "[Voting Link 1]");
             cmp.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ComponentBuilder("**click me**").create()));
             cmp.setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, "http://bit.ly/2CC6zF4"));

@@ -1,6 +1,5 @@
 package sbs.mira.pvp.game.util;
 
-import sbs.mira.pvp.event.PostMatchPlayerRespawnEvent;
 import sbs.mira.pvp.framework.event.MatchPlayerJoinEvent;
 import sbs.mira.pvp.framework.event.MatchPlayerLeaveEvent;
 import sbs.mira.pvp.framework.stored.Activatable;

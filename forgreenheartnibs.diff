@@ -1,0 +1,4816 @@
+diff --git a/pom.xml b/pom.xml
+index e6513d6..f5405cf 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -25,7 +25,7 @@
+ 
+   <properties>
+     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+-    <main.class>sbs.mira.pvp.MiraPvpPlugin</main.class>
++    <main.class>sbs.mira.pvp.MiraVersePlugin</main.class>
+   </properties>
+ 
+   <build>
+@@ -39,8 +39,7 @@
+         <directory>${basedir}/src/main/resources</directory>
+         <includes>
+           <include>plugin.yml</include>
+-          <include>config.yml</include>
+-          <include>messages.yml</include>
++          <include>pvp_messages.yml</include>
+         </includes>
+       </resource>
+     </resources>
+@@ -68,8 +67,9 @@
+             <configuration>
+               <artifactSet>
+                 <includes>
+-                  <include>com.sk89q:command-framework-bukkit</include>
+                   <include>sbs.mira:core</include>
++                  <include>app.ashcon.intake:intake-bukkit:*</include>
++                  <include>app.ashcon.intake:intake-core:*</include>
+                 </includes>
+               </artifactSet>
+             </configuration>
+@@ -98,5 +98,10 @@
+       <version>1.0.1</version>
+       <scope>compile</scope>
+     </dependency>
++    <dependency>
++      <groupId>app.ashcon.intake</groupId>
++      <artifactId>intake-bukkit</artifactId>
++      <version>1.3-SNAPSHOT</version>
++    </dependency>
+   </dependencies>
+ </project>
+\ No newline at end of file
+diff --git a/src/main/java/sbs/mira/pvp/MiraPvpMaster.java b/src/main/java/sbs/mira/pvp/MiraPvpMaster.java
+deleted file mode 100644
+index 67c611b..0000000
+--- a/src/main/java/sbs/mira/pvp/MiraPvpMaster.java
++++ /dev/null
+@@ -1,279 +0,0 @@
+-package sbs.mira.pvp;
+-
+-import org.bukkit.Bukkit;
+-import org.bukkit.ChatColor;
+-import org.bukkit.Material;
+-import org.bukkit.craftbukkit.v1_21_R5.entity.CraftPlayer;
+-import org.bukkit.entity.Player;
+-import org.bukkit.inventory.ItemStack;
+-import org.bukkit.inventory.meta.BookMeta;
+-import org.bukkit.inventory.meta.ItemMeta;
+-import org.bukkit.potion.PotionEffectType;
+-import org.jetbrains.annotations.NotNull;
+-import sbs.mira.core.MiraPluginMaster;
+-import sbs.mira.pvp.stats.WarStats;
+-import sbs.mira.pvp.util.Cache;
+-import sbs.mira.pvp.util.Match;
+-import sbs.mira.pvp.util.modules.EntityUtility;
+-import sbs.mira.pvp.util.modules.QueryUtility;
+-import sbs.mira.pvp.util.modules.RespawnUtility;
+-
+-import java.util.ArrayList;
+-import java.util.HashMap;
+-import java.util.List;
+-import java.util.UUID;
+-
+-/**
+- * [wit.]
+- * created on 2017-03-20.
+- *
+- * @author jj.mira.sbs
+- * @author jd.mira.sbs
+- * @version 1.0.1
+- * @see sbs.mira.core
+- * @since 1.0.0
+- */
+-public
+-class MiraPvpMaster
+-  extends MiraPluginMaster<MiraPvpPulse, MiraPvpPlayer>
+-{
+-  
+-  private final Match match;
+-  private final Cache cache;
+-  private final RespawnUtility respawn;
+-  private final EntityUtility entities;
+-  private final MiraConfiguration config;
+-  private final QueryUtility db;
+-  
+-  private final ArrayList<UUID> warned; // Keeps track of warning messages for players.
+-  private final HashMap<UUID, WarStats> tempStats;
+-  
+-  private ItemStack HANDBOOK;
+-  ItemStack VOTE;
+-  ItemStack SKYBLOCK;
+-  
+-  public
+-  MiraPvpMaster(MiraPvpPlugin plugin)
+-  {
+-    this.match = new Match(this);
+-    this.cacheutil = new Cache(this);
+-    this.respawnutil = new RespawnUtility(this);
+-    this.entiutil = new EntityUtility(this);
+-    this.qryutil = new QueryUtility(this, plugin.getConfig().getBoolean("database.enabled"));
+-    new Guard(this);
+-    new StatsListener(this);
+-    
+-    warned = new ArrayList<>();
+-    tempStats = new HashMap<>();
+-    Bukkit.getScheduler().runTaskTimer(plugin, warned::clear, 0L, 60L);
+-    createItems();
+-  }
+-  
+-  /**
+-   * returns a running instance of the extended Match manager.
+-   *
+-   * @return match manager.
+-   */
+-  public
+-  Match match()
+-  {
+-    return matchutil;
+-  }
+-  
+-  /**
+-   * returns a running instance of the extended Cache.
+-   *
+-   * @return cache.
+-   */
+-  public
+-  Cache cache()
+-  {
+-    return cacheutil;
+-  }
+-  
+-  /**
+-   * returns a running instance of the respawn utility.
+-   *
+-   * @return respawn utility.
+-   */
+-  public
+-  RespawnUtility respawn()
+-  {
+-    return respawnutil;
+-  }
+-  
+-  /**
+-   * returns a running instance of the entity utility.
+-   *
+-   * @return entity utility.
+-   */
+-  public
+-  EntityUtility entity()
+-  {
+-    return entiutil;
+-  }
+-  
+-  /**
+-   * returns a running instance of the configuration utility.
+-   *
+-   * @return configuration utility.
+-   */
+-  public
+-  MiraConfiguration conf()
+-  {
+-    return confutil;
+-  }
+-  
+-  /**
+-   * returns a running instance of the query utility.
+-   *
+-   * @return query utility.
+-   */
+-  public
+-  QueryUtility query()
+-  {
+-    return qryutil;
+-  }
+-  
+-  /**
+-   * temporarily holds onto a player's statistics
+-   * without necessarily having a WarPlayerPlus
+-   * instance created yet. (pre login)
+-   *
+-   * @param uuid      uuid associated with the stats.
+-   * @param tempStats actual stats.
+-   */
+-  void putTempStats(UUID uuid, WarStats tempStats)
+-  {
+-    this.tempStats.put(uuid, tempStats);
+-  }
+-  
+-  /**
+-   * creates an instance of a WarPlayer for a player.
+-   *
+-   * @param target the target to base the WarPlayer object on.
+-   */
+-  public
+-  MiraPvpPlayer declares(Player target)
+-  {
+-    WarStats stats = tempStats.getOrDefault(target.getUniqueId(), new WarStats(this, target.getUniqueId()));
+-    tempStats.remove(target.getUniqueId()); // Remove their pre-login storage stats.
+-    MiraPlayer result = new MiraPvpPlayer(target.getHan, this, stats); // Create their instance.
+-    players().put(target.getUniqueId(), result); // Put it in the key/value set!
+-    return result;
+-  }
+-  
+-  /**
+-   * checks if a player can be warned, and then warns them.
+-   *
+-   * @param whoWasWarned who was warned.
+-   */
+-  public
+-  void warn(Player whoWasWarned, String warning)
+-  {
+-    if (warned.contains(whoWasWarned.getPlayer().getUniqueId()))
+-    {
+-      return;
+-    }
+-    warned.add(whoWasWarned.getPlayer().getUniqueId());
+-    whoWasWarned.sendMessage("TIP: " + warning);
+-  }
+-  
+-  /**
+-   * gives a targeted player the spectator kit.
+-   * this isn't needed, but it might be later.
+-   *
+-   * @param wp the target player.
+-   * @since 1.0
+-   */
+-  public
+-  void spectating(MiraPlayer wp)
+-  {
+-    wp.crafter().getInventory().setHeldItemSlot(4);
+-    wp.crafter().getInventory().setItem(4, HANDBOOK);
+-    wp.crafter().getInventory().setItem(0, SKYBLOCK);
+-    wp.crafter().getInventory().setItem(1, VOTE);
+-  }
+-  
+-  /**
+-   * creates the handbook because the process of
+-   * doing so consumes lines like no tomorrow.
+-   * all other items too why not.
+-   */
+-  private
+-  void createItems()
+-  {
+-    HANDBOOK = new ItemStack(Material.WRITTEN_BOOK);
+-    BookMeta bookMeta = (BookMeta) HANDBOOK.getItemMeta();
+-    bookMeta.setTitle(ChatColor.BOLD + "War: The Basics");
+-    bookMeta.setAuthor("War Administration");
+-    bookMeta.setGeneration(BookMeta.Generation.TATTERED);
+-    
+-    List<String> pages = new ArrayList<>();
+-    pages.add(ChatColor.translateAlternateColorCodes(
+-      '&',
+-      "&lWar: The Basics\n&0Hey there, player!\n\nBook Contents:\n&ci.&0 Overview\n&9ii.&0 Commands\n&6iii.&0 Players\n&aiv.&0 Rules\n\nIf you're &cnew&0, read through me and then\n       &nHAVE FUN!\n\n&0  »»»"
+-    ));
+-    pages.add(ChatColor.translateAlternateColorCodes(
+-      '&',
+-      "&oPart I. An Overview\n&0Welcome to War!\n\nThis is a &5team-based &0strategy PvP server!\nWork with your &4team mates &0to win matches.\n\nThere's a &agamemode &0tosuit everyone's play style!\n\n\n&0     »»»"
+-    ));
+-    pages.add(ChatColor.translateAlternateColorCodes(
+-      '&',
+-      "&oPart II. Commands\n\nStart Playing!\n&c/join &0- &9/leave\n&0What's up next?\n&4/rotation\n&0Have your say!\n&a/vote &0<gamemode>\nStatistics!\n&6/stats &0+ &7/leaderboard\n\n&0Or, &n/? War\n\n&0        »»»"
+-    ));
+-    pages.add(ChatColor.translateAlternateColorCodes(
+-      '&',
+-      "&oPart III. Players\n&0You'll see these people online!\n\n&oStaff:\n&6@&8Administrator\n&5@&8Moderator\n\n&0&oOther Ranks:\n&a#&8Donator\n&e#&8DonatorPlus\n&4#&8MapCreator\n\n&0           »»»"
+-    ));
+-    pages.add(ChatColor.translateAlternateColorCodes(
+-      '&',
+-      "&oPart IV. Rules\n&0Follow these!\n\n&ci. &0Don't be a dick.\n&9ii. &0Play the game.\n&4iii. &0Don't cheat.\n&6iv. &0Don't combat log.\n&2v. &0Be a good sport.\n&5vi. &0Don't spawncamp.\n&8vii. &0Listen to @Staff\n&7viii. &0Have fun!\n\n\n&0              »»»"
+-    ));
+-    pages.add(ChatColor.translateAlternateColorCodes(
+-      '&',
+-      "&oNow, go get 'em!\n\n&0We encourage players to use &4common sense &0whilst playing. Have a safe, sensible, and &dfun &cWar!\n\n&0- Administration\n\n\n\n\n                  X"
+-    ));
+-    bookMeta.setPages(pages);
+-    HANDBOOK.setItemMeta(bookMeta);
+-    
+-    SKYBLOCK = new ItemStack(Material.EYE_OF_ENDER);
+-    ItemMeta sbMeta = SKYBLOCK.getItemMeta();
+-    sbMeta.setDisplayName(ChatColor.BOLD + "To: Skyblock");
+-    List<String> lore = new ArrayList<>();
+-    lore.add(ChatColor.GRAY + "Right click to return");
+-    lore.add(ChatColor.GRAY + "to the Skyblock server!");
+-    sbMeta.setLore(lore);
+-    SKYBLOCK.setItemMeta(sbMeta);
+-    
+-    VOTE = items().createPotion(PotionEffectType.HEAL, 0, 0, 1);
+-    ItemMeta voteMeta = VOTE.getItemMeta();
+-    voteMeta.setDisplayName(ChatColor.BOLD + "Vote For Us!");
+-    lore.clear();
+-    lore.add(ChatColor.GRAY + "Right click to reaveal the");
+-    lore.add(ChatColor.GRAY + "voting link. Earn rewards!");
+-    voteMeta.setLore(lore);
+-    VOTE.setItemMeta(voteMeta);
+-  }
+-  
+-  @Override
+-  public @NotNull
+-  Cache observe()
+-  {
+-    return cacheutil;
+-  }
+-  
+-  @Override
+-  public @NotNull
+-  MiraPlayer<?> declares(@NotNull CraftPlayer target)
+-  {
+-    return null;
+-  }
+-  
+-  @Override
+-  public
+-  void spectating(@NotNull MiraPvpPlayer wp)
+-  {
+-  
+-  }
+-}
+diff --git a/src/main/java/sbs/mira/pvp/MiraVersePlayer.java b/src/main/java/sbs/mira/pvp/MiraVersePlayer.java
+index db0c224..a1341c2 100644
+--- a/src/main/java/sbs/mira/pvp/MiraVersePlayer.java
++++ b/src/main/java/sbs/mira/pvp/MiraVersePlayer.java
+@@ -5,7 +5,7 @@ import org.bukkit.craftbukkit.v1_21_R6.entity.CraftPlayer;
+ import org.jetbrains.annotations.NotNull;
+ import org.jetbrains.annotations.Nullable;
+ import sbs.mira.core.model.MiraPlayerModel;
+-import sbs.mira.pvp.model.MiraTeamModel;
++import sbs.mira.pvp.model.map.MiraTeamModel;
+ import sbs.mira.pvp.stats.WarStats;
+ 
+ /**
+@@ -15,12 +15,12 @@ import sbs.mira.pvp.stats.WarStats;
+  * @author jj.mira.sbs
+  * @author jd.mira.sbs
+  * @version 1.0.1
+- * @see sbs.mira.pvp.MiraPvpPulse
++ * @see MiraVersePulse
+  * @since 1.0.0
+  */
+ public final
+-class MiraPvpPlayer
+-  extends MiraPlayerModel<MiraPvpPulse>
++class MiraVersePlayer
++  extends MiraPlayerModel<MiraVersePulse>
+ {
+   
+   /**
+@@ -34,7 +34,7 @@ class MiraPvpPlayer
+   private MiraTeamModel team;
+   
+   public
+-  MiraPvpPlayer( CraftPlayer player, MiraPvpPulse pulse )
++  MiraVersePlayer( CraftPlayer player, MiraVersePulse pulse )
+   {
+     super( player, pulse );
+     
+@@ -117,7 +117,7 @@ class MiraPvpPlayer
+     if ( has_team( ) )
+     {
+       this.crafter( ).setCollidable( true );
+-      for ( MiraPvpPlayer player : pulse( ).master( ).players( ).values( ) )
++      for ( MiraVersePlayer player : pulse( ).model( ).players( ).values( ) )
+       {
+         if ( !player.equals( this ) )
+         {
+@@ -137,7 +137,7 @@ class MiraPvpPlayer
+     else
+     {
+       player.setCollidable( false );
+-      for ( MiraPvpPlayer player : pulse( ).master( ).players( ).values( ) )
++      for ( MiraVersePlayer player : pulse( ).model( ).players( ).values( ) )
+       {
+         if ( !player.equals( this ) )
+         {
+diff --git a/src/main/java/sbs/mira/pvp/MiraVersePlugin.java b/src/main/java/sbs/mira/pvp/MiraVersePlugin.java
+index 06ed74f..cef7aca 100644
+--- a/src/main/java/sbs/mira/pvp/MiraVersePlugin.java
++++ b/src/main/java/sbs/mira/pvp/MiraVersePlugin.java
+@@ -18,11 +18,11 @@ import java.io.IOException;
+  * @since 1.0.0
+  */
+ public
+-class MiraPvpPlugin
+-  extends MiraPlugin<MiraPvpPulse>
++class MiraVersePlugin
++  extends MiraPlugin<MiraVersePulse>
+ {
+   public
+-  MiraPvpPlugin( @NotNull MiraPvpPulse pulse )
++  MiraVersePlugin( @NotNull MiraVersePulse pulse )
+   {
+     super( pulse );
+   }
+@@ -35,7 +35,7 @@ class MiraPvpPlugin
+     
+     super.onLoad( );
+     
+-    this.pulse( ).breathe( this, new MiraPvpModel( this.pulse( ) ) );
++    this.pulse( ).breathe( this, new MiraVerseModel( this.pulse( ) ) );
+     
+     BasicBukkitCommandGraph cmdGraph = new BasicBukkitCommandGraph( );
+     // todo: commands here
+@@ -55,7 +55,7 @@ class MiraPvpPlugin
+     this.getServer( ).getMessenger( ).registerOutgoingPluginChannel( this, "BungeeCord" );
+     
+     this.log( "[verse] first match starts." );
+-    pulse( ).master( ).match( ).firstMatch( );
++    pulse( ).model( ).match( ).firstMatch( );
+   }
+   
+   @Override
+@@ -71,14 +71,14 @@ class MiraPvpPlugin
+     
+     try
+     {
+-      this.pulse( ).master( ).world( ).discards(
+-        this.pulse( ).master( ).match( ).getRawRoundID( ) + "" );
++      this.pulse( ).model( ).world( ).discards(
++        this.pulse( ).model( ).match( ).getRawRoundID( ) + "" );
+     }
+     catch ( IOException ignored )
+     {
+       this.log(
+         "lingering match world '%d' could not be discarded and must be deleted manually.".formatted(
+-          this.pulse( ).master( ).match( ).getRawRoundID( ) ) );
++          this.pulse( ).model( ).match( ).getRawRoundID( ) ) );
+     }
+   }
+ }
+diff --git a/src/main/java/sbs/mira/pvp/MiraVersePulse.java b/src/main/java/sbs/mira/pvp/MiraVersePulse.java
+index 6c59eff..6f368d5 100644
+--- a/src/main/java/sbs/mira/pvp/MiraVersePulse.java
++++ b/src/main/java/sbs/mira/pvp/MiraVersePulse.java
+@@ -5,14 +5,14 @@ import sbs.mira.core.MiraPulse;
+ 
+ public
+ final
+-class MiraPvpPulse
+-  extends MiraPulse<MiraPvpPlugin, MiraPvpModel>
++class MiraVersePulse
++  extends MiraPulse<MiraVersePlugin, MiraVerseModel>
+ {
+   public
+-  MiraPvpPulse(
+-    @NotNull MiraPvpPlugin plugin,
+-    @NotNull MiraPvpModel master
+-  )
++  MiraVersePulse(
++    @NotNull MiraVersePlugin plugin,
++    @NotNull MiraVerseModel master
++                )
+   {
+     super(plugin, master);
+   }
+diff --git a/src/main/java/sbs/mira/pvp/event/match/MatchPlayerRespawnEvent.java b/src/main/java/sbs/mira/pvp/event/match/MatchPlayerRespawnEvent.java
+index 5ddb5a3..918074b 100644
+--- a/src/main/java/sbs/mira/pvp/event/match/MatchPlayerRespawnEvent.java
++++ b/src/main/java/sbs/mira/pvp/event/match/MatchPlayerRespawnEvent.java
+@@ -1,47 +1,51 @@
+-package sbs.mira.pvp.event;
++package sbs.mira.pvp.event.match;
+ 
+-import sbs.mira.pvp.framework.MiraPlayer;
+ import org.bukkit.event.Event;
+ import org.bukkit.event.HandlerList;
++import org.jetbrains.annotations.NotNull;
++import sbs.mira.pvp.MiraVersePlayer;
+ 
+ /**
+- * Custom event to handle respawns.
+- * <p>
+- * Just like all events, custom ones can be created.
+- * This one is called when a player has waited out
+- * the full length of the respawn utility task.
++ * event that should fire when a player respawns back into an active match.
++ * this occurs after death and waiting out the respawn timer.
++ * this event cannot be cancelled - and should fire before the respawn occurs.
++ * created on 2017-04-20.
+  *
+- * @author s101601828 @ Swin.
+- * @version 1.0
++ * @author jj stephen.
++ * @version 1.0.1
+  * @see Event
+- * <p>
+- * Created by Josh on 20/04/2017.
+- * @since 1.0
++ * @since 1.0.0
+  */
+-public class MatchPlayerRespawnEvent extends Event {
+-
+-    private static final HandlerList handlers = new HandlerList();
+-    private final MiraPlayer player;
+-
+-    public MatchPlayerRespawnEvent(MiraPlayer player) {
+-        this.player = player;
+-    }
+-
+-    public static HandlerList getHandlerList() {
+-        return handlers;
+-    }
+-
+-    @Override
+-    public HandlerList getHandlers() {
+-        return handlers;
+-    }
+-
+-    /**
+-     * Returns the player who respawned.
+-     *
+-     * @return The player who respawned.
+-     */
+-    public MiraPlayer getPlayer() {
+-        return player;
+-    }
++public
++class MatchPlayerRespawnEvent
++  extends Event
++{
++  private static final HandlerList handlers = new HandlerList( );
++  
++  private final @NotNull MiraVersePlayer player;
++  
++  public
++  MatchPlayerRespawnEvent( @NotNull MiraVersePlayer player )
++  {
++    this.player = player;
++  }
++  
++  public @NotNull
++  MiraVersePlayer player( )
++  {
++    return player;
++  }
++  
++  public static
++  HandlerList getHandlerList( )
++  {
++    return handlers;
++  }
++  
++  @Override
++  public
++  HandlerList getHandlers( )
++  {
++    return handlers;
++  }
+ }
+diff --git a/src/main/java/sbs/mira/pvp/event/match/MiraMatchEndEvent.java b/src/main/java/sbs/mira/pvp/event/match/MiraMatchEndEvent.java
+index 1f1a923..bd234e7 100644
+--- a/src/main/java/sbs/mira/pvp/event/match/MiraMatchEndEvent.java
++++ b/src/main/java/sbs/mira/pvp/event/match/MiraMatchEndEvent.java
+@@ -1,12 +1,13 @@
+-package sbs.mira.pvp.event;
++package sbs.mira.pvp.event.match;
+ 
+ import org.bukkit.event.Event;
+ import org.bukkit.event.HandlerList;
+ import org.jetbrains.annotations.NotNull;
+ 
+ /**
+- * event that should fire when an active match is transitioning to the post-game.
+- * the scenarios in which this event can occur is subjective.
++ * event that should fire when an active match transitions into to the post-game.
++ * scenarios in which this event can occur are subjective - usually by the game mode.
++ * this event cannot be cancelled - and should fire before the post-game occurs.
+  * created on 2017-09-21.
+  *
+  * @author jj stephen.
+diff --git a/src/main/java/sbs/mira/pvp/event/match/MiraMatchPlayerDeathEvent.java b/src/main/java/sbs/mira/pvp/event/match/MiraMatchPlayerDeathEvent.java
+index 81a6abd..cf54e2b 100644
+--- a/src/main/java/sbs/mira/pvp/event/match/MiraMatchPlayerDeathEvent.java
++++ b/src/main/java/sbs/mira/pvp/event/match/MiraMatchPlayerDeathEvent.java
+@@ -1,54 +1,67 @@
+-package sbs.mira.pvp.event;
++package sbs.mira.pvp.event.match;
+ 
+ import org.bukkit.event.Event;
+ import org.bukkit.event.HandlerList;
+ import org.jetbrains.annotations.NotNull;
+-import sbs.mira.pvp.framework.MiraPlayer;
++import org.jetbrains.annotations.Nullable;
++import sbs.mira.pvp.MiraVersePlayer;
+ 
+ /**
+- * custom event to handle death during an active, ongoing pvp match.
+- * <p>
+- * Just like all events, custom ones can be created.
+- * This one is called when a player dies during a match.
+- * <p>
++ * event that should fire when a player dies during an active match.
++ * the death event may or may not involve a killing player - the killer.
++ * this event cannot be cancelled - and should fire prior to the respawn logic.
+  * created on 2017-09-21.
+  *
+- * @author jj.mira.sbs
+- * @author jd.mira.sbs
+- * @version 1.0.0
++ * @author jj stephen.
++ * @author jd rose.
++ * @version 1.0.1
+  * @see Event
+  * @since 1.0.0
+  */
+-public class MatchPlayerDeathEvent extends Event {
++public
++class MiraMatchPlayerDeathEvent
++  extends Event
++{
++  private static final HandlerList handlers = new HandlerList( );
+   
+-  private static final HandlerList handlers = new HandlerList();
+-  private final MiraPlayer dead, killer;
++  private final @NotNull MiraVersePlayer killed;
++  private final @Nullable MiraVersePlayer killer;
+   
+-  public MatchPlayerDeathEvent(MiraPlayer dead, MiraPlayer killer) {
+-    this.dead = dead;
++  public
++  MiraMatchPlayerDeathEvent( @NotNull MiraVersePlayer killed, @Nullable MiraVersePlayer killer )
++  {
++    this.killed = killed;
+     this.killer = killer;
+   }
+   
+-  public static HandlerList getHandlerList() {
+-    return handlers;
+-  }
+-  
+-  @Override
+-  public @NotNull HandlerList getHandlers() {
+-    return handlers;
+-  }
+-  
+   /**
+-   * @return the victim.
++   * @return the player who died.
+    */
+-  public MiraPlayer getPlayer() {
+-    return dead;
++  public @NotNull
++  MiraVersePlayer killed( )
++  {
++    return killed;
+   }
+   
+   /**
+-   * @return the killer.
++   * @return the killing player (where applicable).
+    */
+-  public MiraPlayer getKiller() {
++  public @Nullable
++  MiraVersePlayer killer( )
++  {
+     return killer;
+   }
++  
++  public static
++  HandlerList getHandlerList( )
++  {
++    return handlers;
++  }
++  
++  @Override
++  public @NotNull
++  HandlerList getHandlers( )
++  {
++    return handlers;
++  }
+ }
+diff --git a/src/main/java/sbs/mira/pvp/event/match/MiraMatchPlayerJoinTeamEvent.java b/src/main/java/sbs/mira/pvp/event/match/MiraMatchPlayerJoinTeamEvent.java
+index 77616af..365fb5b 100644
+--- a/src/main/java/sbs/mira/pvp/event/match/MiraMatchPlayerJoinTeamEvent.java
++++ b/src/main/java/sbs/mira/pvp/event/match/MiraMatchPlayerJoinTeamEvent.java
+@@ -1,39 +1,83 @@
+-package sbs.mira.pvp.event;
++package sbs.mira.pvp.event.match;
+ 
++import org.bukkit.event.Cancellable;
+ import org.bukkit.event.Event;
+ import org.bukkit.event.HandlerList;
+ import org.jetbrains.annotations.NotNull;
+-import sbs.mira.pvp.framework.MiraPlayer;
++import sbs.mira.pvp.MiraVersePlayer;
++import sbs.mira.pvp.model.map.MiraTeamModel;
+ 
+ /**
+- * custom event to handle team joining.
++ * event that should fire when a player joins a team during an active match.
++ * this can occur at the start of a match (automatically for queued players),
++ * or during the middle of a match if a player joins late / leaves to spectate.
++ * this event can be cancelled if the player should not be allowed to join.
++ * therefore, this event should fire prior to the team assignment logic (for cancelling).
+  * created on 2017-09-21.
+  *
+- * @author jj.mira.sbs
+- * @author jd.mira.sbs
++ * @author jj stephen.
++ * @author jd rose.
+  * @version 1.0.1
+  * @see Event
+  * @since 1.0.0
+  */
+-public class MatchPlayerJoinEvent extends Event {
++public
++class MiraMatchPlayerJoinTeamEvent
++  extends Event
++  implements Cancellable
++{
+   
+-  private static final HandlerList handlers = new HandlerList();
+-  private final MiraPlayer player;
++  private static final HandlerList handlers = new HandlerList( );
+   
+-  public MatchPlayerJoinEvent(MiraPlayer player) {
++  private boolean cancelled;
++  
++  private final @NotNull MiraVersePlayer player;
++  private final @NotNull MiraTeamModel team;
++  
++  public
++  MiraMatchPlayerJoinTeamEvent( @NotNull MiraVersePlayer player, @NotNull MiraTeamModel team )
++  {
++    this.cancelled = false;
+     this.player = player;
++    this.team = team;
++  }
++  
++  public @NotNull
++  MiraVersePlayer player( )
++  {
++    return player;
++  }
++  
++  public @NotNull
++  MiraTeamModel team( )
++  {
++    return team;
+   }
+   
+-  public static HandlerList getHandlerList() {
++  public static
++  HandlerList getHandlerList( )
++  {
+     return handlers;
+   }
+   
+   @Override
+-  public @NotNull HandlerList getHandlers() {
++  public @NotNull
++  HandlerList getHandlers( )
++  {
+     return handlers;
+   }
+   
+-  public MiraPlayer getPlayer() {
+-    return player;
++  @Override
++  public
++  boolean isCancelled( )
++  {
++    return cancelled;
++  }
++  
++  @Override
++  public
++  void setCancelled( boolean cancelled )
++  {
++    this.cancelled = cancelled;
+   }
+ }
+diff --git a/src/main/java/sbs/mira/pvp/event/match/MiraMatchPlayerLeaveTeamEvent.java b/src/main/java/sbs/mira/pvp/event/match/MiraMatchPlayerLeaveTeamEvent.java
+index c93e1f6..0909070 100644
+--- a/src/main/java/sbs/mira/pvp/event/match/MiraMatchPlayerLeaveTeamEvent.java
++++ b/src/main/java/sbs/mira/pvp/event/match/MiraMatchPlayerLeaveTeamEvent.java
+@@ -1,46 +1,61 @@
+-package sbs.mira.pvp.event;
++package sbs.mira.pvp.event.match;
+ 
+ import org.bukkit.event.Event;
+ import org.bukkit.event.HandlerList;
+-import sbs.mira.pvp.framework.MiraPlayer;
++import org.jetbrains.annotations.NotNull;
++import sbs.mira.pvp.MiraVersePlayer;
++import sbs.mira.pvp.model.map.MiraTeamModel;
+ 
+ /**
+- * Custom event to handle team leaving.
+- * <p>
+- * Just like all events, custom ones can be created.
+- * This one is called when a player leaves the match.
++ * event that should fire when a player leaves an active match.
++ * this can occur when a player leaves the minecraft server,
++ * or during the middle of a match - voluntarily - to resume spectating.
++ * this event cannot be cancelled - and should fire after the transfer occurs.
++ * created on 2017-09-21.
+  *
+- * @author s101601828 @ Swin.
+- * @version 1.0
++ * @author jj stephen.
++ * @version 1.0.1
+  * @see Event
+- * <p>
+- * Created by Josh on 21/09/2017.
+- * @since 1.1
++ * @since 1.0.0
+  */
+-public class MatchPlayerLeaveEvent extends Event {
+-
+-    private static final HandlerList handlers = new HandlerList();
+-    private final MiraPlayer player;
+-
+-    public MatchPlayerLeaveEvent(MiraPlayer player) {
+-        this.player = player;
+-    }
+-
+-    public static HandlerList getHandlerList() {
+-        return handlers;
+-    }
+-
+-    @Override
+-    public HandlerList getHandlers() {
+-        return handlers;
+-    }
+-
+-    /**
+-     * Returns the player who leaves.
+-     *
+-     * @return The player who leaves.
+-     */
+-    public MiraPlayer getPlayer() {
+-        return player;
+-    }
++public
++class MiraMatchPlayerLeaveTeamEvent
++  extends Event
++{
++  private static final HandlerList handlers = new HandlerList( );
++  
++  private final @NotNull MiraVersePlayer player;
++  private final @NotNull MiraTeamModel team;
++  
++  public
++  MiraMatchPlayerLeaveTeamEvent( @NotNull MiraVersePlayer player, @NotNull MiraTeamModel team )
++  {
++    this.player = player;
++    this.team = team;
++  }
++  
++  public @NotNull
++  MiraVersePlayer player( )
++  {
++    return player;
++  }
++  
++  public @NotNull
++  MiraTeamModel team( )
++  {
++    return team;
++  }
++  
++  public static
++  HandlerList getHandlerList( )
++  {
++    return handlers;
++  }
++  
++  @Override
++  public
++  HandlerList getHandlers( )
++  {
++    return handlers;
++  }
+ }
+diff --git a/src/main/java/sbs/mira/pvp/game/Gamemode.java b/src/main/java/sbs/mira/pvp/game/Gamemode.java
+index 598d758..e1a63d1 100644
+--- a/src/main/java/sbs/mira/pvp/game/Gamemode.java
++++ b/src/main/java/sbs/mira/pvp/game/Gamemode.java
+@@ -1,42 +1,16 @@
+ package sbs.mira.pvp.game;
+ 
+-import sbs.mira.pvp.event.MatchPlayerRespawnEvent;
+-import sbs.mira.pvp.event.PostMatchPlayerRespawnEvent;
+-import sbs.mira.pvp.framework.MiraPlayer;
+-import sbs.mira.pvp.framework.event.MatchPlayerDeathEvent;
+-import sbs.mira.pvp.framework.game.WarMode;
+-import sbs.mira.pvp.framework.game.WarTeam;
+-import sbs.mira.pvp.framework.MiraPulse;
+ import au.edu.swin.war.game.modes.*;
+-import sbs.mira.pvp.game.modes.*;
+-import sbs.mira.pvp.MiraPvpMaster;
+-import net.md_5.bungee.api.chat.ClickEvent;
+-import net.md_5.bungee.api.chat.ComponentBuilder;
+-import net.md_5.bungee.api.chat.HoverEvent;
+-import net.md_5.bungee.api.chat.TextComponent;
+-import org.apache.commons.io.IOUtils;
+-import org.bukkit.Bukkit;
+ import org.bukkit.ChatColor;
+-import org.bukkit.GameMode;
+-import org.bukkit.Sound;
+ import org.bukkit.event.EventHandler;
+-import org.bukkit.event.entity.PlayerDeathEvent;
+ import org.bukkit.event.player.PlayerJoinEvent;
+-import org.bukkit.event.player.PlayerRespawnEvent;
+-import org.json.simple.JSONArray;
+-import org.json.simple.JSONObject;
++import sbs.mira.pvp.MiraVersePlayer;
++import sbs.mira.pvp.framework.MiraPlayer;
++import sbs.mira.pvp.framework.MiraPulse;
++import sbs.mira.pvp.framework.game.WarMode;
++import sbs.mira.pvp.framework.game.WarTeam;
+ 
+-import java.io.IOException;
+-import java.io.OutputStream;
+-import java.net.HttpURLConnection;
+-import java.net.URL;
+-import java.net.URLConnection;
+-import java.net.URLEncoder;
+-import java.nio.charset.StandardCharsets;
+-import java.text.DecimalFormat;
+-import java.text.SimpleDateFormat;
+-import java.util.*;
+-import java.util.Map;
++import java.util.HashMap;
+ 
+ /**
+  * An extension to WarMode.
+@@ -52,446 +26,70 @@ import java.util.Map;
+  * Created by Josh on 20/04/2017.
+  * @since 1.0
+  */
+-public abstract class Gamemode extends WarMode {
+-
+-
+-    protected String tempWinner; // The winner of the round, if any.
+-
+-    /* Website Statistics Stuff */
+-    private HashMap<UUID, Integer> kills;
+-    private HashMap<UUID, Integer> deaths;
+-    private int environmentalKills;
+-    private ArrayList<String> eventLog;
+-    /*                          */
+-
+-    /**
+-     * Logs an event. This can be anything.
+-     * A kill, a death, etc.
+-     * A flag capture, a flag drop, etc.
+-     * Log it all!
+-     *
+-     * @param toLog What to log.
+-     */
+-    public void logEvent(String toLog) {
+-        eventLog.add(ChatColor.GRAY + main.strings().getDigitalTime(getTimeElapsed()) + ChatColor.WHITE + " " + toLog);
+-    }
+-
+-    public void initializeCommon() {
+-        kills = new HashMap<>(); // Initialize recorded kills.
+-        deaths = new HashMap<>(); // Initialize recorded deaths.
+-        environmentalKills = 0; // Reset unrecorded deaths.
+-        eventLog = new ArrayList<>(); // Create an array for event logs.
+-    }
+-
+-    /**
+-     * This procedure also acts as a statistics pushing procdure.
+-     */
+-    @SuppressWarnings("unchecked")
+-    public void resetCommon() {
+-        if (((MiraPvpMaster) main).conf().WEBSTATS_ENABLED) {
+-            JSONObject stats = new JSONObject();
+-            if (getTimeElapsed() == 0)
+-                setTimeElapsed(1); // Elapse at least one second to prevent a divison by zero error.
+-
+-            // Total Kills
+-            int totalKills = 0;
+-            for (int kill : kills.values())
+-                totalKills += kill;
+-
+-            // Total Deaths
+-            int totalDeaths = 0;
+-            for (int death : deaths.values())
+-                totalDeaths += death;
+-
+-            // Global Match Information
+-            stats.put("matchid", ((MiraPvpMaster) main).conf().WEBSTATS_POS + 1);
+-            stats.put("mapname", map().getMapName());
+-            stats.put("gamemode", getFullName());
+-            stats.put("duration", main.strings().getDigitalTime(getTimeElapsed()));
+-            stats.put("date", new SimpleDateFormat("MM/dd/yyyy").format(new Date()));
+-            stats.put("winner", tempWinner);
+-            stats.put("totalkills", totalKills);
+-            stats.put("totaldeaths", totalDeaths);
+-            stats.put("envdeaths", environmentalKills);
+-            if (getTimeElapsed() < 60) // Prevent a divison by zero error.
+-                stats.put("kpm", totalKills);
+-            else
+-                stats.put("kpm", new DecimalFormat("0.00").format((double) totalKills / (double) (getTimeElapsed() / 60)));
+-
+-            if (totalKills == 0 || getTimeElapsed() < 35) { // Too boring to record.
+-                Bukkit.broadcastMessage("This match has not been recorded.");
+-                return;
+-            }
+-
+-            ((MiraPvpMaster) main).conf().incrementPosition(); // Increment to the next match ID.
+-
+-            // Team Information
+-            JSONObject teams = new JSONObject(); // JSON Object to store teams.
+-            for (WarTeam team : getTeams()) {
+-                JSONObject jteam = new JSONObject(); // JSON Object for this team.
+-                jteam.put("color", team.getTeamColor().toString());
+-
+-                int tKills = 0;
+-                for (Map.Entry<UUID, Integer> entry : kills.entrySet()) // For every player that participated...
+-                    if (team.getBukkitTeam().getPlayers().contains(Bukkit.getOfflinePlayer(entry.getKey()))) // Were they a part of this team?
+-                        tKills += entry.getValue(); // Add their total to the team's total.
+-
+-                int tDeaths = 0;
+-                for (Map.Entry<UUID, Integer> entry : deaths.entrySet()) // For every player that participated...
+-                    if (team.getBukkitTeam().getPlayers().contains(Bukkit.getOfflinePlayer(entry.getKey()))) // Were they a part of this team?
+-                        tDeaths += entry.getValue(); // Add their total to the team's total.
+-
+-                // Reflect the totals that were calculated.
+-                jteam.put("kills", tKills);
+-                jteam.put("deaths", tDeaths);
+-                jteam.put("players", team.getBukkitTeam().getPlayers().size());
+-
+-                JSONObject extra = new JSONObject(); // Extra stuff.
+-                for (Map.Entry<String, Object> data : getExtraTeamData(team).entrySet()) // Assign all gamemode-specific data.
+-                    extra.put(data.getKey(), data.getValue());
+-                jteam.put("extra", extra);
+-                teams.put(team.getTeamName(), jteam); // Put this team into the teams array.
+-            }
+-            stats.put("teams", teams);
+-
+-            // Event Information
+-            JSONArray events = new JSONArray();
+-            events.addAll(eventLog); // Bulk add events to JSON array.
+-            stats.put("events", events);
+-
+-            // Run the HTTP request asynchronous to prevent lag..
+-            main.plugin().getServer().getScheduler().runTaskAsynchronously(main.plugin(), () -> {
+-                try {
+-                    URL url = new URL(((MiraPvpMaster) main).conf().WEBSTATS_ACTION);
+-                    URLConnection con = url.openConnection();
+-                    HttpURLConnection http = (HttpURLConnection) con;
+-                    http.setRequestMethod("POST");
+-                    http.setDoOutput(true);
+-
+-                    Map<String, String> arguments = new HashMap<>();
+-                    // Our HTTP POST arguments.
+-                    arguments.put("secret", ((MiraPvpMaster) main).conf().WEBSTATS_SECRET);
+-                    arguments.put("stats", stats.toJSONString());
+-
+-                    // Encodes our request.
+-                    StringJoiner sj = new StringJoiner("&");
+-                    for (Map.Entry<String, String> entry : arguments.entrySet())
+-                        sj.add(URLEncoder.encode(entry.getKey(), "UTF-8") + "="
+-                                + URLEncoder.encode(entry.getValue(), "UTF-8"));
+-                    byte[] out = sj.toString().getBytes(StandardCharsets.UTF_8);
+-                    int length = out.length;
+-
+-                    // Send the request!
+-                    http.setFixedLengthStreamingMode(length);
+-                    http.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
+-                    http.addRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)");
+-                    http.connect();
+-                    try (OutputStream os = http.getOutputStream()) {
+-                        os.write(out);
+-                    }
+-                    // Log the response to the request to ensure it was successful.
+-                    main.plugin().log("Stats HTTP POST request successful: " + IOUtils.toString(http.getInputStream(), StandardCharsets.UTF_8.name()));
+-                    Bukkit.broadcastMessage("Full Match statistics recorded @ " + ChatColor.UNDERLINE + "https://rpg.solar/match/" + ((MiraPvpMaster) main).conf().WEBSTATS_POS);
+-                } catch (IOException e) {
+-                    // If anything goes wrong, just raw print the stats.
+-                    e.printStackTrace();
+-                    main.plugin().log("Was unable to POST request to the stats script!");
+-                    main.plugin().log("Raw stats: " + stats.toString());
+-                }
+-            });
+-        }
+-        // Clear everything, now that it isn't needed.
+-        kills.clear();
+-        kills = null;
+-        deaths.clear();
+-        deaths = null;
+-        tempWinner = null;
+-        eventLog.clear();
+-        eventLog = null;
+-    }
+-
+-    /**
+-     * This function should be extended and made to return a
+-     * team's extra data, such as how many flags they attempted
+-     * to capture, how long they held a flag for, etc.
+-     * <p>
+-     * This is used for statistics purposes.
+-     *
+-     * @return The extra team data, if applicable.
+-     */
+-    protected abstract HashMap<String, Object> getExtraTeamData(WarTeam team);
+-
+-    public void onJoin(MiraPlayer joined) {
+-        logEvent(joined.name() + " joined " + joined.getCurrentTeam().getTeamColor() + joined.getCurrentTeam().getTeamName());
+-        kills.put(joined.crafter().getUniqueId(), 0);
+-        deaths.put(joined.crafter().getUniqueId(), 0);
+-        //TODO: Maybe make this display what the player needs to do?
+-    }
+-
+-    @EventHandler
+-    public void playerDeathHandle(PlayerDeathEvent event) {
+-        MiraPlayer dead = main.getWarPlayer(event.getEntity()); // Get the player who died.
+-        inc(deaths, dead.crafter().getUniqueId()); // Increment their deaths this match.
+-        MiraPlayer killer = main.getWarPlayer(dead.crafter().getKiller()); // Get the player who killed the player.
+-
+-        ((MiraPvpMaster) main).respawn().onDeath(main.getWarPlayer(dead.crafter().getUniqueId()));
+-        dead.getCurrentTeam().addDeath();
+-        // Handle respawning for this player.
+-
+-        if (dead.equals(killer)) killer = null; // Did they kill themselves?
+-        if (killer == null) {
+-            event.setDeathMessage(event.getDeathMessage().replaceAll(dead.name(), dead.display_name()));
+-            logEvent(event.getDeathMessage()); // Log the death.
+-            environmentalKills++;
+-            onDeath(dead);
+-            main.plugin().getServer().getPluginManager().callEvent(new MatchPlayerDeathEvent(dead, null));
+-            return;
+-        }
+-
+-        // Play a sound effect.
+-        killer.getCurrentTeam().addKill();
+-        dead.crafter().getWorld().playSound(dead.crafter().getLocation(), Sound.ENTITY_BLAZE_DEATH, 1L, 1L);
+-
+-        // Format the death message to show display names instead.
+-        event.setDeathMessage(event.getDeathMessage()
+-                .replaceAll(dead.name(), dead.display_name())
+-                .replaceAll(killer.name(), killer.display_name()));
+-
+-        // Call the onKill() procedure so the extended Gamemode can react to it.
+-        logEvent(event.getDeathMessage()); // Log the event first.
+-        inc(kills, killer.crafter().getUniqueId()); // Increment their kills this match.
+-        onKill(dead, killer);
+-        main.plugin().getServer().getPluginManager().callEvent(new MatchPlayerDeathEvent(dead, killer));
+-    }
+-
+-    /**
+-     * Increments a key in a UUID,Integer hashmap.
+-     * Used for incrementing deaths/kills.
+-     *
+-     * @param toAddTo The HashMap to add to.
+-     * @param key     The key to increment.
+-     */
+-    private void inc(HashMap<UUID, Integer> toAddTo, UUID key) {
+-        toAddTo.put(key, toAddTo.get(key) + 1);
+-    }
+-
+-    /**
+-     * Broadcasts a winner after calculation.
+-     *
+-     * @param winners   The list of winners.
+-     * @param objective The objective. i.e. CTF = "captures"
+-     * @param highest   Used if there is a single winner.
+-     */
+-    protected void broadcastWinner(List<WarTeam> winners, String objective, int highest) {
+-        // Is there more than one winner?
+-        if (winners.size() > 1) {
+-            TextComponent comp = new TextComponent("It's a " + winners.size() + "-way tie! ");
+-            comp.addExtra(main.strings().winnerFormat(winners));
+-            comp.addExtra(" tied!");
+-            main.broadcastSpigotMessage(comp);
+-
+-            tempWinner = main.strings().sentenceFormat(winners);
+-        } else if (winners.size() == 1) {
+-            WarTeam winner = winners.get(0); // Get the singleton winner!
+-            // ChatColor.stripColor() is used to remove the team's color from the String so it can be queried to get their points.
+-            TextComponent comp = winner.getHoverInformation();
+-            // WHY SO GRAMMAR?
+-            comp.addExtra((winner.getTeamName().charAt(winner.getTeamName().length() - 1) == 's' ? " are the winners" : " is the winner") + " with " + highest + " " + objective + "!");
+-            main.broadcastSpigotMessage(comp);
+-            tempWinner = main.strings().sentenceFormat(winners);
+-        }
+-    }
+-
+-    @EventHandler
+-    public void onRespawn(PlayerRespawnEvent event) {
+-        event.getPlayer().setBedSpawnLocation(null); // No bed spawn locations.
+-
+-        MiraPlayer wp = main.getWarPlayer(event.getPlayer()); // Get their WarPlayer implement.
+-
+-        // Change the respawn location to a random team spawn.
+-        event.setRespawnLocation(randomSpawnFrom(
+-                main.cache().getCurrentMap().getTeamSpawns(
+-                        wp.getCurrentTeam().getTeamName())).toLocation(
+-                main.match().getCurrentWorld(), true));
+-
+-        // Apply the current map's inventory.
+-        main.cache().getCurrentMap().applyInv(wp);
+-
+-        // They're back in the match again!
+-        event.getPlayer().setGameMode(GameMode.SURVIVAL);
+-    }
+-
+-    @EventHandler
+-    public void onRespawn(MatchPlayerRespawnEvent event) {
+-        MiraPlayer wp = event.getPlayer(); // Get their WarPlayer implement.
+-
+-        if (!wp.is_member_of_team()) return; // Ignore this if they aren't playing.
+-
+-        // Teleport them to their respawn location.
+-        wp.crafter().teleport(randomSpawnFrom(
+-                map().getTeamSpawns(
+-                        wp.getCurrentTeam().getTeamName())).toLocation(
+-                main.match().getCurrentWorld(), true));
+-
+-        // Apply the current map's inventory.
+-        map().applyInv(wp);
+-
+-        // They're back in the match again!
+-        wp.crafter().setGameMode(GameMode.SURVIVAL);
+-        Bukkit.getPluginManager().callEvent(new PostMatchPlayerRespawnEvent(wp));
+-    }
+-
+-    @EventHandler
+-    public void onJoin(PlayerJoinEvent event) {
+-        event.getPlayer().setScoreboard(s());
+-        s().getTeam("Spectators").addPlayer(event.getPlayer());
+-    }
+-
+-    /**
+-     * Returns the amount of WarPlayers that are
+-     * marked as joined. This is used by gamemodes
+-     * that require a certain amount of players.
+-     *
+-     * @return Amount of players marked as joined.
+-     */
+-    protected int getJoined() {
+-        int joined = 0;
+-        for (MiraPlayer pl : main.getWarPlayers().values())
+-            if (pl.isJoined()) joined++;
+-        return joined;
+-    }
+-
+-    /**
+-     * Returns an inputted team's opposition.
+-     * This method should only be used in a 2-team match.
+-     *
+-     * @param team The team to check for opposition.
+-     * @return The opposition, if any.
+-     */
+-    public String opposition(WarTeam team) {
+-        for (WarTeam teams : map().getTeams())
+-            if (!team.getTeamName().equals(teams.getTeamName()))
+-                return teams.getTeamColor() + teams.getTeamName();
+-        return ChatColor.WHITE + "Unknown";
++public abstract
++class Gamemode
++  extends WarMode
++{
++  
++  /**
++   * This function should be extended and made to return a
++   * team's extra data, such as how many flags they attempted
++   * to capture, how long they held a flag for, etc.
++   * <p>
++   * This is used for statistics purposes.
++   *
++   * @return The extra team data, if applicable.
++   */
++  protected abstract
++  HashMap<String, Object> getExtraTeamData( WarTeam team );
++  
++  //fixme: move to match handler?
++  @EventHandler
++  public
++  void onJoin( PlayerJoinEvent event )
++  {
++    event.getPlayer( ).setScoreboard( s( ) );
++    s( ).getTeam( "Spectators" ).addPlayer( event.getPlayer( ) );
++  }
++  
++  /**
++   * Returns the amount of WarPlayers that are
++   * marked as joined. This is used by gamemodes
++   * that require a certain amount of players.
++   *
++   * @return Amount of players marked as joined.
++   */
++  protected
++  int joined_player_count( )
++  {
++    int joined = 0;
++    for ( MiraVersePlayer pl : this.p.values( ) )
++    {
++      if ( pl.isJoined( ) )
++      {
++        joined++;
++      }
+     }
+-
+-    /**
+-     * This is an enumeration of all available gamemodes.
+-     * When designating gamemodes for your map, use this.
+-     */
+-    public enum Mode {
+-        TDM("Team Death Match", "TDM"),
+-        FFA("Free For All", "FFA"),
+-        LTS("Last Team Standing", "LTS"),
+-        LMS("Last Man Standing", "LMS"),
+-        KOTH("King of The Hill", "KoTH"),
+-        DDM("District Death Match", "DDM"),
+-        CTF("Capture The Flag", "CTF"),
+-        LP("Lifepool", "LP"),
+-        DTM("Destroy The Monument", "DTM");
+-
+-        final String fullName;
+-        final String shortName;
+-
+-        Mode(String fullName, String shortName) {
+-            this.fullName = fullName;
+-            this.shortName = shortName;
+-        }
+-
+-        /**
+-         * Formats this string, similar to StringUtility#sentenceFormat
+-         * but specifically for this enumerated type.
+-         *
+-         * @param array The array of modes to format.
+-         * @return The formatted string.
+-         */
+-        public static TextComponent format(Mode[] array, MiraPulse main) {
+-            if (array.length == 0) return new TextComponent("None");
+-            TextComponent result = new TextComponent();
+-            if (array.length == 1) return new TextComponent(array[0].getDescriptionComponent(main, true));
+-            int i = 1;
+-            while (i <= array.length) {
+-                if (i == array.length) {
+-                    result.addExtra(ChatColor.WHITE + " and ");
+-                    result.addExtra(array[i - 1].getDescriptionComponent(main, true));
+-                } else if (i == 1)
+-                    result = array[0].getDescriptionComponent(main, true);
+-                else {
+-                    result.addExtra(ChatColor.WHITE + ", ");
+-                    result.addExtra(array[i - 1].getDescriptionComponent(main, true));
+-                }
+-                i++;
+-            }
+-            return result;
+-        }
+-
+-        /**
+-         * Converts an instance of a Gamemode into its enumerated counterpart.
+-         * Extremely ineffective in my opinion.
+-         * //TODO: Make each class store its own enumerated type?
+-         *
+-         * @param mode The mode to check.
+-         * @return The resulting enum.
+-         */
+-        public static Mode fromGamemode(WarMode mode) {
+-            if (mode instanceof CTF)
+-                return CTF;
+-            else if (mode instanceof DDM)
+-                return DDM;
+-            else if (mode instanceof DTM)
+-                return DTM;
+-            else if (mode instanceof FFA)
+-                return FFA;
+-            else if (mode instanceof KoTH)
+-                return KOTH;
+-            else if (mode instanceof LMS)
+-                return LMS;
+-            else if (mode instanceof LP)
+-                return LP;
+-            else if (mode instanceof LTS)
+-                return LTS;
+-            else if (mode instanceof TDM)
+-                return TDM;
+-            else return null;
+-        }
+-
+-        /**
+-         * Returns the full name of the enumerated type.
+-         *
+-         * @return Full name.
+-         */
+-        public String getFullName() {
+-            return fullName;
+-        }
+-
+-        /**
+-         * Returns the short name of the enumerated type.
+-         *
+-         * @return Short name.
+-         */
+-        public String getActualShortName() {
+-            return shortName;
+-        }
+-
+-        /**
+-         * Generates an interactive gamemode hoverable.
+-         *
+-         * @param main          Supercontroller for gamemode access.
+-         * @param withVoteClick Enable click this to vote?
+-         * @return Resulting chat component.
+-         */
+-        public TextComponent getDescriptionComponent(MiraPulse main, boolean withVoteClick) {
+-            TextComponent msg = new TextComponent(ChatColor.GREEN + "[" + shortName + "]");
+-            WarMode assoc = main.cache().getGamemode(getFullName());
+-            msg.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+-                    new ComponentBuilder(ChatColor.GREEN + "" + ChatColor.BOLD + getFullName() + "\n"
+-                            + ChatColor.RED + ChatColor.ITALIC + "When attacking:\n" + ChatColor.WHITE
+-                            + assoc.getOffensive() + ChatColor.BLUE + ChatColor.ITALIC + "\nWhen defending:\n"
+-                            + ChatColor.WHITE + assoc.getDefensive() + (withVoteClick ? "\n"
+-                            + ChatColor.UNDERLINE + "Click To Vote" : "")).create()));
+-            if (withVoteClick)
+-                msg.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/vote " + shortName));
+-            return msg;
+-        }
++    return joined;
++  }
++  
++  /**
++   * Returns an inputted team's opposition.
++   * This method should only be used in a 2-team match.
++   *
++   * @param team The team to check for opposition.
++   * @return The opposition, if any.
++   */
++  public
++  String opposition( WarTeam team )
++  {
++    for ( WarTeam teams : map( ).getTeams( ) )
++    {
++      if ( !team.getTeamName( ).equals( teams.getTeamName( ) ) )
++      {
++        return teams.getTeamColor( ) + teams.getTeamName( );
++      }
+     }
++    return ChatColor.WHITE + "Unknown";
++  }
+ }
+diff --git a/src/main/java/sbs/mira/pvp/game/modes/CTF.java b/src/main/java/sbs/mira/pvp/game/modes/CTF.java
+index f05d152..3bccc9e 100644
+--- a/src/main/java/sbs/mira/pvp/game/modes/CTF.java
++++ b/src/main/java/sbs/mira/pvp/game/modes/CTF.java
+@@ -5,7 +5,7 @@ import sbs.mira.pvp.framework.game.WarTeam;
+ import sbs.mira.pvp.framework.stored.SerializedLocation;
+ import sbs.mira.pvp.framework.MiraPulse;
+ import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.MiraPvpMaster;
++import sbs.mira.pvp.MiraVerseModel;
+ import sbs.mira.pvp.util.WoolColor;
+ import org.bukkit.*;
+ import org.bukkit.block.Block;
+@@ -140,9 +140,9 @@ public class CTF extends Gamemode {
+     private void doFireworks() {
+         for (CTFInfo inf : info.values())
+             if (inf.getHolder() == null)
+-                ((MiraPvpMaster) main).entity().spawnFirework(inf.getFlag().clone().add(0.5, 1, 0.5), inf.getTeam().getTeamColor());
++                (( MiraVerseModel ) main).entities( ).spawnFirework( inf.getFlag( ).clone( ).add( 0.5, 1, 0.5 ), inf.getTeam( ).getTeamColor( ) );
+             else
+-                ((MiraPvpMaster) main).entity().spawnFirework(Bukkit.getPlayer(inf.getHolder()).getLocation(), inf.getTeam().getTeamColor());
++                (( MiraVerseModel ) main).entities( ).spawnFirework( Bukkit.getPlayer( inf.getHolder( ) ).getLocation( ), inf.getTeam( ).getTeamColor( ) );
+     }
+ 
+     /**
+diff --git a/src/main/java/sbs/mira/pvp/game/modes/KoTH.java b/src/main/java/sbs/mira/pvp/game/modes/KoTH.java
+index d896802..e0c85ff 100644
+--- a/src/main/java/sbs/mira/pvp/game/modes/KoTH.java
++++ b/src/main/java/sbs/mira/pvp/game/modes/KoTH.java
+@@ -5,7 +5,7 @@ import sbs.mira.pvp.framework.game.WarTeam;
+ import sbs.mira.pvp.framework.stored.SerializedLocation;
+ import sbs.mira.pvp.framework.MiraPulse;
+ import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.MiraPvpMaster;
++import sbs.mira.pvp.MiraVerseModel;
+ import sbs.mira.pvp.util.WoolColor;
+ import org.bukkit.*;
+ import org.bukkit.entity.Player;
+@@ -123,9 +123,9 @@ public class KoTH extends Gamemode {
+      */
+     private void doFireworks() {
+         if (holder == null) // Spawn white.
+-            ((MiraPvpMaster) main).entity().spawnFirework(flag.clone().add(0.5, 1, 0.5), ChatColor.WHITE);
++            (( MiraVerseModel ) main).entities( ).spawnFirework( flag.clone( ).add( 0.5, 1, 0.5 ), ChatColor.WHITE );
+         else
+-            ((MiraPvpMaster) main).entity().spawnFirework(flag.clone().add(0.5, 1, 0.5), holder.getTeamColor());
++            (( MiraVerseModel ) main).entities( ).spawnFirework( flag.clone( ).add( 0.5, 1, 0.5 ), holder.getTeamColor( ) );
+     }
+ 
+     public void updateScoreboard() {
+diff --git a/src/main/java/sbs/mira/pvp/game/modes/LMS.java b/src/main/java/sbs/mira/pvp/game/modes/LMS.java
+index 4498a00..500d20c 100644
+--- a/src/main/java/sbs/mira/pvp/game/modes/LMS.java
++++ b/src/main/java/sbs/mira/pvp/game/modes/LMS.java
+@@ -49,7 +49,7 @@ public class LMS extends Gamemode {
+         alive = new ArrayList<>();
+         participated = new ArrayList<>();
+ 
+-        if (getJoined() < 2) {
++        if ( joined_player_count( ) < 2) {
+             // LMS requires 2 players at the least to play.
+             Bukkit.broadcastMessage("There needs to be 2 or more participating players!");
+             logEvent("Match cancelled as there was not enough players");
+diff --git a/src/main/java/sbs/mira/pvp/game/modes/LTS.java b/src/main/java/sbs/mira/pvp/game/modes/LTS.java
+index 3246993..40c668d 100644
+--- a/src/main/java/sbs/mira/pvp/game/modes/LTS.java
++++ b/src/main/java/sbs/mira/pvp/game/modes/LTS.java
+@@ -47,7 +47,7 @@ public class LTS extends Gamemode {
+         participated = new ArrayList<>();
+         original = new HashMap<>();
+ 
+-        if (getJoined() < 2) {
++        if ( joined_player_count( ) < 2) {
+             Bukkit.broadcastMessage("There needs to be 2 or more participating players!");
+             logEvent("Match cancelled as there was not enough players");
+             onEnd();
+diff --git a/src/main/java/sbs/mira/pvp/game/util/RadialSpawnPoint.java b/src/main/java/sbs/mira/pvp/game/util/RadialSpawnPoint.java
+index 553fd8a..4d3f4a4 100644
+--- a/src/main/java/sbs/mira/pvp/game/util/RadialSpawnPoint.java
++++ b/src/main/java/sbs/mira/pvp/game/util/RadialSpawnPoint.java
+@@ -1,8 +1,8 @@
+ package sbs.mira.pvp.game.util;
+ 
+-import sbs.mira.pvp.framework.stored.SerializedLocation;
+ import org.bukkit.Location;
+ import org.bukkit.World;
++import sbs.mira.core.model.Position;
+ 
+ import java.util.Random;
+ 
+@@ -24,60 +24,109 @@ import java.util.Random;
+  * Created by Josh on 27/03/2017.
+  * @since 1.0
+  */
+-public class RadialSpawnPoint extends SerializedLocation {
+-
+-    /* Getters and setters are not required for these variables. */
+-    private final int radiusX, radiusZ;
+-
+-    private final Random rng;
+-
+-    /**
+-     * Main constructor for this class.
+-     *
+-     * @param x       The X coordinate.
+-     * @param y       The Y coordinate.
+-     * @param z       The Z coordinate.
+-     * @param yaw     Yaw is the player's head rotation. (-90 to 90 degrees)
+-     * @param pitch   Pitch is the player's body rotation. (360 degrees)
+-     * @param radiusX How far the generated location can deviate on the X axis both ways.
+-     * @param radiusZ How far the generated location can deviate on the Z axis both ways.
+-     */
+-    public RadialSpawnPoint(Random rng, double x, double y, double z, float yaw, float pitch, int radiusX, int radiusZ) {
+-        super(x, y, z, yaw, pitch);
+-        this.radiusX = radiusX;
+-        this.radiusZ = radiusZ;
+-        this.rng = rng;
++public
++class RadialSpawnPoint
++  extends Position
++{
++  
++  /* Getters and setters are not required for these variables. */
++  private final int radiusX, radiusZ;
++  
++  private final Random rng;
++  
++  /**
++   * Main constructor for this class.
++   *
++   * @param x       The X coordinate.
++   * @param y       The Y coordinate.
++   * @param z       The Z coordinate.
++   * @param yaw     Yaw is the player's head rotation. (-90 to 90 degrees)
++   * @param pitch   Pitch is the player's body rotation. (360 degrees)
++   * @param radiusX How far the generated location can deviate on the X axis both ways.
++   * @param radiusZ How far the generated location can deviate on the Z axis both ways.
++   */
++  public
++  RadialSpawnPoint(
++    Random rng,
++    double x,
++    double y,
++    double z,
++    float yaw,
++    float pitch,
++    int radiusX,
++    int radiusZ
++                  )
++  {
++    super( x, y, z, yaw, pitch );
++    this.radiusX = radiusX;
++    this.radiusZ = radiusZ;
++    this.rng = rng;
++  }
++  
++  /**
++   * This constructor allows for cleaner code where a
++   * pitch and yaw are not defined. Defaults are 0.
++   *
++   * @param x The X coordinate.
++   * @param y The Y coordinate.
++   * @param z The Z coordinate.
++   */
++  public
++  RadialSpawnPoint( Random rng, double x, double y, double z, int radiusX, int radiusZ )
++  {
++    this( rng, x, y, z, 0, 0, radiusX, radiusZ );
++  }
++  
++  /**
++   * This function translates this basic extension of
++   * an XYZ location back into Spigot's Location implementation.
++   *
++   * @param world The world the XYZ coordinate is in.
++   * @param pitch Whether or not to include pitch.
++   * @return The resultant Location object.
++   * @see Location
++   */
++  @Override
++  public
++  Location toLocation( World world, boolean pitch )
++  {
++    double dx, dz;
++    dx = rng.nextInt( radiusX + 1 );
++    if ( rng.nextBoolean( ) )
++    {
++      dx = -dx;
+     }
+-
+-    /**
+-     * This constructor allows for cleaner code where a
+-     * pitch and yaw are not defined. Defaults are 0.
+-     *
+-     * @param x The X coordinate.
+-     * @param y The Y coordinate.
+-     * @param z The Z coordinate.
+-     */
+-    public RadialSpawnPoint(Random rng, double x, double y, double z, int radiusX, int radiusZ) {
+-        this(rng, x, y, z, 0, 0, radiusX, radiusZ);
++    dz = rng.nextInt( radiusZ + 1 );
++    if ( rng.nextBoolean( ) )
++    {
++      dz = -dz;
+     }
+-
+-    /**
+-     * This function translates this basic extension of
+-     * an XYZ location back into Spigot's Location implementation.
+-     *
+-     * @param world The world the XYZ coordinate is in.
+-     * @param pitch Whether or not to include pitch.
+-     * @return The resultant Location object.
+-     * @see Location
+-     */
+-    @Override
+-    public Location toLocation(World world, boolean pitch) {
+-        double dx, dz;
+-        dx = rng.nextInt(radiusX + 1);
+-        if (rng.nextBoolean()) dx = -dx;
+-        dz = rng.nextInt(radiusZ + 1);
+-        if (rng.nextBoolean()) dz = -dz;
+-        if (pitch) return new Location(world, x() + dx, y(), z() + dz, yaw(), this.pitch());
+-        return new Location(world, x() + dx, y(), z() + dz);
++    if ( pitch )
++    {
++      return new Location( world, x( ) + dx, y( ), z( ) + dz, yaw( ), this.pitch( ) );
+     }
++    return new Location( world, x( ) + dx, y( ), z( ) + dz );
++  }
++  
++  @Override
++  public
++  boolean equals( Object obj )
++  {
++    return obj == this || obj != null && obj.getClass( ) == this.getClass( );
++  }
++  
++  @Override
++  public
++  int hashCode( )
++  {
++    return 1;
++  }
++  
++  @Override
++  public
++  String toString( )
++  {
++    return "RadialSpawnPoint[]";
++  }
++  
+ }
+diff --git a/src/main/java/sbs/mira/pvp/game/util/SpawnArea.java b/src/main/java/sbs/mira/pvp/game/util/SpawnArea.java
+index da38cda..29def93 100644
+--- a/src/main/java/sbs/mira/pvp/game/util/SpawnArea.java
++++ b/src/main/java/sbs/mira/pvp/game/util/SpawnArea.java
+@@ -1,6 +1,5 @@
+ package sbs.mira.pvp.game.util;
+ 
+-import sbs.mira.pvp.event.PostMatchPlayerRespawnEvent;
+ import sbs.mira.pvp.framework.event.MatchPlayerJoinEvent;
+ import sbs.mira.pvp.framework.event.MatchPlayerLeaveEvent;
+ import sbs.mira.pvp.framework.stored.Activatable;
+diff --git a/src/main/java/sbs/mira/pvp/maps/BattleRoyale.java b/src/main/java/sbs/mira/pvp/maps/BattleRoyale.java
+index 30ab1de..72f50d1 100644
+--- a/src/main/java/sbs/mira/pvp/maps/BattleRoyale.java
++++ b/src/main/java/sbs/mira/pvp/maps/BattleRoyale.java
+@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
+ import sbs.mira.pvp.framework.game.WarTeam;
+ import sbs.mira.pvp.framework.stored.SerializedLocation;
+ import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.game.Map;
++import sbs.mira.pvp.model.map.MiraMapModelConcrete;
+ import sbs.mira.pvp.game.util.RadialSpawnPoint;
+ import sbs.mira.pvp.game.util.SpawnArea;
+ import net.minecraft.server.v1_12_R1.EntityLiving;
+@@ -37,7 +37,8 @@ import java.lang.reflect.Field;
+ import java.util.UUID;
+ 
+ @SuppressWarnings("Duplicates")
+-public class BattleRoyale extends Map {
++public class BattleRoyale extends MiraMapModelConcrete
++{
+ 
+     private final UUID[] creators = {id("2e1c067c-6f09-4db0-8cd7-defc12ce622e"), id("a40cdbc0-ce09-4c56-a1a8-7732394b6ad4")};
+     private final String mapName = "Battle Royale";
+@@ -46,18 +47,18 @@ public class BattleRoyale extends Map {
+     private final WarTeam team1 = new WarTeam("Purple Team", ChatColor.DARK_PURPLE, 20);
+     private final WarTeam team2 = new WarTeam("Cyan Team", ChatColor.DARK_AQUA, 20);
+ 
+-    protected void readyAttributes() {
+-        setMapName(mapName);
+-        setCreators(creators);
+-        setGamemodes(gamemodes);
+-        setDisabledDrops(Material.values());
+-        registerTeam(team1);
+-        registerTeam(team2);
++    protected void define_rules( ) {
++        label( mapName );
++        creators( creators );
++        game_modes( gamemodes );
++        disabled_drops( Material.values( ) );
++        team( team1 );
++        team( team2 );
+         setAllowBuild(false, false);
+         objectives().add(new SpawnArea(main, -37, 19, -24, 30, false, true));
+         objectives().add(new SpawnArea(main, -37, -30, -24, -19, false, true));
+-        setTimeLockTime(14000);
+-        setMatchDuration(600);
++        time_lock_time( 14000 );
++        match_duration( 600 );
+     }
+ 
+     protected void readySpawns() {
+@@ -65,7 +66,7 @@ public class BattleRoyale extends Map {
+         addTeamSpawn(team1, new SerializedLocation(-28.5, 85, 25.5, 135, 0));
+         addTeamSpawn(team2, new SerializedLocation(-33.5, 85, -25.5, 315, 0));
+         addTeamSpawn(team2, new SerializedLocation(-28.5, 85, -25.5, 45, 0));
+-        setSpectatorSpawn(new RadialSpawnPoint(main.rng, -2.5, 84, 0.5, 90, 0, 0, 5));
++        spectator_spawn_position( new RadialSpawnPoint( main.rng, -2.5, 84, 0.5, 90, 0, 0, 5) );
+     }
+ 
+     @Override
+diff --git a/src/main/java/sbs/mira/pvp/maps/Battlement.java b/src/main/java/sbs/mira/pvp/maps/Battlement.java
+index 24c9ae1..397929e 100644
+--- a/src/main/java/sbs/mira/pvp/maps/Battlement.java
++++ b/src/main/java/sbs/mira/pvp/maps/Battlement.java
+@@ -1,84 +1,112 @@
+ package sbs.mira.pvp.maps;
+ 
+-import sbs.mira.pvp.framework.MiraPlayer;
+-import sbs.mira.pvp.framework.game.WarTeam;
+-import sbs.mira.pvp.framework.stored.SerializedLocation;
+-import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.game.Map;
+-import sbs.mira.pvp.game.util.RadialSpawnPoint;
+ import org.bukkit.ChatColor;
+-import org.bukkit.Material;
+-import org.bukkit.inventory.ItemStack;
+-import org.bukkit.inventory.PlayerInventory;
+-import org.bukkit.potion.PotionEffect;
+-import org.bukkit.potion.PotionEffectType;
+-
+-import java.util.UUID;
+-
+-@SuppressWarnings("Duplicates")
+-public class Battlement extends Map {
+-
+-    private final UUID[] creators = {id("9b733374-2418-4c5a-b6a4-d27b77020903")};
+-    private final String mapName = "Battlement";
+-    private final Gamemode.Mode[] gamemodes = {Gamemode.Mode.CTF, Gamemode.Mode.LTS, Gamemode.Mode.LP};
+-
+-    private final WarTeam team1 = new WarTeam("Blue Team", ChatColor.BLUE, 20);
+-    private final WarTeam team2 = new WarTeam("Red Team", ChatColor.RED, 20);
+-
+-
+-    protected void readyAttributes() {
+-        setMapName(mapName);
+-        setCreators(creators);
+-        setGamemodes(gamemodes);
+-        registerTeam(team1);
+-        registerTeam(team2);
+-        setAllowBuild(false, false);
+-        addCTFFlag(team1.getTeamName(), new SerializedLocation(-31, 84, 20));
+-        addCTFFlag(team2.getTeamName(), new SerializedLocation(27, 84, -29));
+-        attr().put("captureRequirement", 2);
+-        setTimeLockTime(6000);
+-        setMatchDuration(900);
+-    }
+-
+-    protected void readySpawns() {
+-        addTeamSpawn(team1, new SerializedLocation(-15.5, 70, 4.5, 225, 0));
+-        addTeamSpawn(team1, new SerializedLocation(-23.5, 70, 4.5, 225, 0));
+-        addTeamSpawn(team1, new SerializedLocation(-31.5, 70, 4.5, 225, 0));
+-        addTeamSpawn(team1, new SerializedLocation(-39.5, 70, 4.5, 225, 0));
+-        addTeamSpawn(team1, new SerializedLocation(-15.5, 70, 12.5, 225, 0));
+-        addTeamSpawn(team1, new SerializedLocation(-15.5, 70, 20.5, 225, 0));
+-        addTeamSpawn(team1, new SerializedLocation(-15.5, 70, 28.5, 225, 0));
+-        addTeamSpawn(team1, new SerializedLocation(-23.5, 74, 12.5, 225, 0));
+-        addTeamSpawn(team1, new SerializedLocation(-31.5, 74, 12.5, 225, 0));
+-        addTeamSpawn(team1, new SerializedLocation(-23.5, 74, 20.5, 225, 0));
+-        addTeamSpawn(team1, new SerializedLocation(-27.5, 78, 16.5, 225, 0));
+-        addTeamSpawn(team2, new SerializedLocation(11.5, 70, -13.5, 45, 0));
+-        addTeamSpawn(team2, new SerializedLocation(19.5, 70, -13.5, 45, 0));
+-        addTeamSpawn(team2, new SerializedLocation(27.5, 70, -13.5, 45, 0));
+-        addTeamSpawn(team2, new SerializedLocation(35.5, 70, -13.5, 45, 0));
+-        addTeamSpawn(team2, new SerializedLocation(11.5, 70, -21.5, 45, 0));
+-        addTeamSpawn(team2, new SerializedLocation(11.5, 70, -29.5, 45, 0));
+-        addTeamSpawn(team2, new SerializedLocation(11.5, 70, -37.5, 45, 0));
+-        addTeamSpawn(team2, new SerializedLocation(19.5, 74, -21.5, 45, 0));
+-        addTeamSpawn(team2, new SerializedLocation(27.5, 74, -21.5, 45, 0));
+-        addTeamSpawn(team2, new SerializedLocation(19.5, 74, -29.5, 45, 0));
+-        addTeamSpawn(team2, new SerializedLocation(23.5, 78, -25.5, 45, 0));
+-        setSpectatorSpawn(new RadialSpawnPoint(main.rng, 13.5, 93, 17.5, 135, 25, 3, 3));
+-    }
+-
+-    @Override
+-    public void applyInventory(MiraPlayer target) {
+-        PlayerInventory inv = target.crafter().getInventory();
+-
+-        main.items().applyArmorAcccordingToTeam(target, new Material[]{Material.IRON_HELMET, Material.LEATHER_CHESTPLATE, Material.IRON_LEGGINGS, Material.IRON_BOOTS});
+-
+-        inv.setItem(0, new ItemStack(Material.IRON_SWORD));
+-        inv.setItem(1, new ItemStack(Material.BOW));
+-        inv.setItem(2, new ItemStack(Material.COOKED_BEEF, 16));
+-        inv.setItem(3, main.items().createPotion(PotionEffectType.HEAL, 0, 1, 1));
+-        inv.setItem(4, new ItemStack(Material.EXP_BOTTLE, 2));
+-        inv.setItem(27, new ItemStack(Material.ARROW, 28));
++import org.jetbrains.annotations.NotNull;
++import sbs.mira.core.model.Position;
++import sbs.mira.pvp.MiraVersePlayer;
++import sbs.mira.pvp.MiraVersePulse;
++import sbs.mira.pvp.game.util.RadialSpawnPoint;
++import sbs.mira.pvp.model.map.MiraMapModel;
++import sbs.mira.pvp.model.map.MiraTeamModel;
++import sbs.mira.pvp.model.match.MiraGameModeType;
+ 
+-        target.crafter().addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 40, 4));
+-    }
++public
++class Battlement
++  extends MiraMapModel
++{
++  private static final String BLUE_TEAM = "blue";
++  private static final String RED_TEAM = "red";
++  
++  public
++  Battlement( @NotNull MiraVersePulse pulse )
++  {
++    super( pulse );
++    
++    this.label( "battlement" );
++    this.display_name( "Battlement" );
++    this.creator( "9b733374-2418-4c5a-b6a4-d27b77020903" );
++    this.allow_game_mode_type( MiraGameModeType.CAPTURE_THE_FLAG );
++    this.allow_game_mode_type( MiraGameModeType.LAST_TEAM_STANDING );
++    this.allow_game_mode_type( MiraGameModeType.LIFE_POOL );
++    
++    this.team( new MiraTeamModel( BLUE_TEAM, "Blue Team", ChatColor.BLUE, 24 ) );
++    this.team( new MiraTeamModel( RED_TEAM, "Red Team", ChatColor.RED, 24 ) );
++  }
++  
++  
++  protected
++  void define_rules( )
++  {
++    this.building_rules( false, false, true );
++    //addCTFFlag( team1.getTeamName( ), new SerializedLocation( -31, 84, 20 ) );
++    //addCTFFlag( team2.getTeamName( ), new SerializedLocation( 27, 84, -29 ) );
++    //attr( ).put( "captureRequirement", 2 );
++    this.time_lock_time( 6000 );
++    this.match_duration( 900 );
++  }
++  
++  protected
++  void define_spawns( )
++  {
++    this.team_spawn( BLUE_TEAM, new Position( -15.5, 70, 4.5, 225, 0 ) );
++    this.team_spawn( BLUE_TEAM, new Position( -23.5, 70, 4.5, 225, 0 ) );
++    this.team_spawn( BLUE_TEAM, new Position( -31.5, 70, 4.5, 225, 0 ) );
++    this.team_spawn( BLUE_TEAM, new Position( -39.5, 70, 4.5, 225, 0 ) );
++    this.team_spawn( BLUE_TEAM, new Position( -15.5, 70, 12.5, 225, 0 ) );
++    this.team_spawn( BLUE_TEAM, new Position( -15.5, 70, 20.5, 225, 0 ) );
++    this.team_spawn( BLUE_TEAM, new Position( -15.5, 70, 28.5, 225, 0 ) );
++    this.team_spawn( BLUE_TEAM, new Position( -23.5, 74, 12.5, 225, 0 ) );
++    this.team_spawn( BLUE_TEAM, new Position( -31.5, 74, 12.5, 225, 0 ) );
++    this.team_spawn( BLUE_TEAM, new Position( -23.5, 74, 20.5, 225, 0 ) );
++    this.team_spawn( BLUE_TEAM, new Position( -27.5, 78, 16.5, 225, 0 ) );
++    
++    this.team_spawn( RED_TEAM, new Position( 11.5, 70, -13.5, 45, 0 ) );
++    this.team_spawn( RED_TEAM, new Position( 19.5, 70, -13.5, 45, 0 ) );
++    this.team_spawn( RED_TEAM, new Position( 27.5, 70, -13.5, 45, 0 ) );
++    this.team_spawn( RED_TEAM, new Position( 35.5, 70, -13.5, 45, 0 ) );
++    this.team_spawn( RED_TEAM, new Position( 11.5, 70, -21.5, 45, 0 ) );
++    this.team_spawn( RED_TEAM, new Position( 11.5, 70, -29.5, 45, 0 ) );
++    this.team_spawn( RED_TEAM, new Position( 11.5, 70, -37.5, 45, 0 ) );
++    this.team_spawn( RED_TEAM, new Position( 19.5, 74, -21.5, 45, 0 ) );
++    this.team_spawn( RED_TEAM, new Position( 27.5, 74, -21.5, 45, 0 ) );
++    this.team_spawn( RED_TEAM, new Position( 19.5, 74, -29.5, 45, 0 ) );
++    this.team_spawn( RED_TEAM, new Position( 23.5, 78, -25.5, 45, 0 ) );
++    
++    this.spectator_spawn_position( new RadialSpawnPoint(
++      this.pulse( ).model( ).rng,
++      13.5,
++      93,
++      17.5,
++      135,
++      25,
++      3,
++      3 ) );
++  }
++  
++  @Override
++  public
++  void apply_inventory( MiraVersePlayer target )
++  {
++    /*PlayerInventory inv = target.crafter( ).getInventory( );
++    
++    main.items( ).applyArmorAcccordingToTeam(
++      target, new Material[]{
++        Material.IRON_HELMET,
++        Material.LEATHER_CHESTPLATE,
++        Material.IRON_LEGGINGS,
++        Material.IRON_BOOTS
++      } );
++    
++    inv.setItem( 0, new ItemStack( Material.IRON_SWORD ) );
++    inv.setItem( 1, new ItemStack( Material.BOW ) );
++    inv.setItem( 2, new ItemStack( Material.COOKED_BEEF, 16 ) );
++    inv.setItem( 3, main.items( ).createPotion( PotionEffectType.HEAL, 0, 1, 1 ) );
++    inv.setItem( 4, new ItemStack( Material.EXP_BOTTLE, 2 ) );
++    inv.setItem( 27, new ItemStack( Material.ARROW, 28 ) );
++    
++    target.crafter( ).addPotionEffect( new PotionEffect(
++      PotionEffectType.DAMAGE_RESISTANCE,
++                                                         40,
++                                                         4 ) );*/
++  }
+ }
+diff --git a/src/main/java/sbs/mira/pvp/maps/ClashOfClay.java b/src/main/java/sbs/mira/pvp/maps/ClashOfClay.java
+index 74b209b..1a7f8df 100644
+--- a/src/main/java/sbs/mira/pvp/maps/ClashOfClay.java
++++ b/src/main/java/sbs/mira/pvp/maps/ClashOfClay.java
+@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
+ import sbs.mira.pvp.framework.game.WarTeam;
+ import sbs.mira.pvp.framework.stored.SerializedLocation;
+ import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.game.Map;
++import sbs.mira.pvp.model.map.MiraMapModelConcrete;
+ import sbs.mira.pvp.game.util.SpawnArea;
+ import org.bukkit.ChatColor;
+ import org.bukkit.Material;
+@@ -14,7 +14,8 @@ import org.bukkit.inventory.PlayerInventory;
+ import java.util.UUID;
+ 
+ @SuppressWarnings("Duplicates")
+-public class ClashOfClay extends Map {
++public class ClashOfClay extends MiraMapModelConcrete
++{
+ 
+     private final UUID[] creators = {id("d04d579e-78ed-4c60-87d4-39ef95755be6")};
+     private final String mapName = "Clash Of Clay";
+@@ -23,24 +24,24 @@ public class ClashOfClay extends Map {
+     private final WarTeam team1 = new WarTeam("Blue Team", ChatColor.BLUE, 15);
+     private final WarTeam team2 = new WarTeam("Red Team", ChatColor.RED, 15);
+ 
+-    protected void readyAttributes() {
+-        setMapName(mapName);
+-        setCreators(creators);
+-        setGamemodes(gamemodes);
+-        registerTeam(team1);
+-        registerTeam(team2);
++    protected void define_rules( ) {
++        label( mapName );
++        creators( creators );
++        game_modes( gamemodes );
++        team( team1 );
++        team( team2 );
+         setAllowBuild(true, true);
+         setBuildBoundary(-51, 0, 4, 172);
+         objectives().add(new SpawnArea(main, -25, 7, -22, 10, true, true));
+         objectives().add(new SpawnArea(main, -25, 162, -22, 165, true, true));
+-        setTimeLockTime(4000);
+-        setMatchDuration(600);
++        time_lock_time( 4000 );
++        match_duration( 600 );
+     }
+ 
+     protected void readySpawns() {
+         addTeamSpawn(team1, new SerializedLocation(-23, 81, 164, 180, 0));
+         addTeamSpawn(team2, new SerializedLocation(-23, 81, 9, 0, 0));
+-        setSpectatorSpawn(new SerializedLocation(27.5, 103.5, 86.5, 90, 30));
++        spectator_spawn_position( new SerializedLocation( 27.5, 103.5, 86.5, 90, 30) );
+     }
+ 
+     @Override
+diff --git a/src/main/java/sbs/mira/pvp/maps/ConvenienceWars.java b/src/main/java/sbs/mira/pvp/maps/ConvenienceWars.java
+index 3b81a84..e691526 100644
+--- a/src/main/java/sbs/mira/pvp/maps/ConvenienceWars.java
++++ b/src/main/java/sbs/mira/pvp/maps/ConvenienceWars.java
+@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
+ import sbs.mira.pvp.framework.game.WarTeam;
+ import sbs.mira.pvp.framework.stored.SerializedLocation;
+ import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.game.Map;
++import sbs.mira.pvp.model.map.MiraMapModelConcrete;
+ import sbs.mira.pvp.game.modes.DDM;
+ import org.bukkit.ChatColor;
+ import org.bukkit.Material;
+@@ -19,7 +19,8 @@ import org.bukkit.potion.PotionEffectType;
+ import java.util.UUID;
+ 
+ @SuppressWarnings("Duplicates")
+-public class ConvenienceWars extends Map {
++public class ConvenienceWars extends MiraMapModelConcrete
++{
+ 
+     private final UUID[] creators = {id("2e1c067c-6f09-4db0-8cd7-defc12ce622e")};
+     private final String mapName = "Convenience Wars";
+@@ -30,17 +31,17 @@ public class ConvenienceWars extends Map {
+ 
+     private final ItemStack GADGET = createGadget(Material.SULPHUR, 2, 0, "Emergency Exit", "Sends you flying backward");
+ 
+-    protected void readyAttributes() {
+-        setMapName(mapName);
+-        setCreators(creators);
+-        setGamemodes(gamemodes);
+-        registerTeam(team1);
+-        registerTeam(team2);
++    protected void define_rules( ) {
++        label( mapName );
++        creators( creators );
++        game_modes( gamemodes );
++        team( team1 );
++        team( team2 );
+         setAllowBuild(false, false);
+         objectives().add(new DDM.Territory(123, 20, -37, 123, 22, -35, team1, main));
+         objectives().add(new DDM.Territory(26, 20, -34, 26, 22, -32, team2, main));
+-        setTimeLockTime(18000);
+-        setMatchDuration(450);
++        time_lock_time( 18000 );
++        match_duration( 450 );
+     }
+ 
+     protected void readySpawns() {
+@@ -62,7 +63,7 @@ public class ConvenienceWars extends Map {
+         addTeamSpawn(team2, new SerializedLocation(31.5, 20, -53.5, 0, 0));
+         addTeamSpawn(team2, new SerializedLocation(23.5, 20, -53.5, 0, 0));
+ 
+-        setSpectatorSpawn(new SerializedLocation(75, 23, -1.5, 180, 0));
++        spectator_spawn_position( new SerializedLocation( 75, 23, -1.5, 180, 0) );
+     }
+ 
+     @Override
+diff --git a/src/main/java/sbs/mira/pvp/maps/ExoticPastures.java b/src/main/java/sbs/mira/pvp/maps/ExoticPastures.java
+index d2a0423..4ae0b9d 100644
+--- a/src/main/java/sbs/mira/pvp/maps/ExoticPastures.java
++++ b/src/main/java/sbs/mira/pvp/maps/ExoticPastures.java
+@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
+ import sbs.mira.pvp.framework.game.WarTeam;
+ import sbs.mira.pvp.framework.stored.SerializedLocation;
+ import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.game.Map;
++import sbs.mira.pvp.model.map.MiraMapModelConcrete;
+ import sbs.mira.pvp.game.modes.DTM;
+ import sbs.mira.pvp.game.util.SpawnArea;
+ import org.bukkit.ChatColor;
+@@ -24,7 +24,8 @@ import org.bukkit.util.BlockIterator;
+ import java.util.UUID;
+ 
+ @SuppressWarnings("Duplicates")
+-public class ExoticPastures extends Map {
++public class ExoticPastures extends MiraMapModelConcrete
++{
+ 
+     private final UUID[] creators = {id("2e1c067c-6f09-4db0-8cd7-defc12ce622e")};
+     private final String mapName = "Exotic Pastures";
+@@ -35,26 +36,26 @@ public class ExoticPastures extends Map {
+ 
+     private final ItemStack GADGET = createGadget(Material.EGG, 5, 0, "Insta-Rototill", "Throw this at grass to instantly become an awesome farmer!");
+ 
+-    protected void readyAttributes() {
+-        setMapName(mapName);
+-        setCreators(creators);
+-        setGamemodes(gamemodes);
+-        registerTeam(team1);
+-        registerTeam(team2);
++    protected void define_rules( ) {
++        label( mapName );
++        creators( creators );
++        game_modes( gamemodes );
++        team( team1 );
++        team( team2 );
+         setAllowBuild(true, true);
+         setPlateauY(77);
+         objectives().add(new SpawnArea(main, -51, -48, -45, -42, true, false));
+         objectives().add(new SpawnArea(main, 43, -4, 49, 2, true, false));
+         objectives().add(new DTM.Monument(-33, 109, 4, -33, 110, 4, team1, main, false, Material.OBSIDIAN));
+         objectives().add(new DTM.Monument(31, 109, -50, 31, 110, -50, team2, main, false, Material.OBSIDIAN));
+-        setTimeLockTime(14000);
+-        setMatchDuration(600);
++        time_lock_time( 14000 );
++        match_duration( 600 );
+     }
+ 
+     protected void readySpawns() {
+         addTeamSpawn(team1, new SerializedLocation(-47.5, 134, -44.5, 90, 0));
+         addTeamSpawn(team2, new SerializedLocation(46.5, 134, -0.5, 270, 0));
+-        setSpectatorSpawn(new SerializedLocation(-1.5, 107, -70.5, 0, 0));
++        spectator_spawn_position( new SerializedLocation( -1.5, 107, -70.5, 0, 0) );
+     }
+ 
+     @Override
+diff --git a/src/main/java/sbs/mira/pvp/maps/FairwickVillage.java b/src/main/java/sbs/mira/pvp/maps/FairwickVillage.java
+index 51e17b7..3e48837 100644
+--- a/src/main/java/sbs/mira/pvp/maps/FairwickVillage.java
++++ b/src/main/java/sbs/mira/pvp/maps/FairwickVillage.java
+@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
+ import sbs.mira.pvp.framework.game.WarTeam;
+ import sbs.mira.pvp.framework.stored.SerializedLocation;
+ import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.game.Map;
++import sbs.mira.pvp.model.map.MiraMapModelConcrete;
+ import org.bukkit.ChatColor;
+ import org.bukkit.Material;
+ import org.bukkit.entity.Player;
+@@ -19,7 +19,8 @@ import org.bukkit.util.Vector;
+ import java.util.UUID;
+ 
+ @SuppressWarnings("Duplicates")
+-public class FairwickVillage extends Map {
++public class FairwickVillage extends MiraMapModelConcrete
++{
+ 
+     private final UUID[] creators = {id("2e1c067c-6f09-4db0-8cd7-defc12ce622e")};
+     private final String mapName = "Fairwick Village";
+@@ -30,15 +31,15 @@ public class FairwickVillage extends Map {
+ 
+     private final ItemStack GADGET = createGadget(Material.FIREWORK, 3, 0, "Jumpwork", "Right click on a block to rise up", "Jump at the right time for max height");
+ 
+-    protected void readyAttributes() {
+-        setMapName(mapName);
+-        setCreators(creators);
+-        setGamemodes(gamemodes);
+-        registerTeam(team1);
+-        registerTeam(team2);
++    protected void define_rules( ) {
++        label( mapName );
++        creators( creators );
++        game_modes( gamemodes );
++        team( team1 );
++        team( team2 );
+         setAllowBuild(true, false);
+-        setTimeLockTime(2000);
+-        setMatchDuration(600);
++        time_lock_time( 2000 );
++        match_duration( 600 );
+ 
+         addCTFFlag(team1.getTeamName(), new SerializedLocation(72, 74, 136));
+         addCTFFlag(team2.getTeamName(), new SerializedLocation(72, 74, -2));
+@@ -49,7 +50,7 @@ public class FairwickVillage extends Map {
+         addTeamSpawn(team1, new SerializedLocation(108.5, 73, 116.5, 180, 0));
+         addTeamSpawn(team2, new SerializedLocation(108.5, 73, 18.5, 0, 0));
+         addTeamSpawn(team2, new SerializedLocation(36.5, 73, 18.5, 0, 0));
+-        setSpectatorSpawn(new SerializedLocation(72.5, 78, 67.5, 90, 0));
++        spectator_spawn_position( new SerializedLocation( 72.5, 78, 67.5, 90, 0) );
+     }
+ 
+     @Override
+diff --git a/src/main/java/sbs/mira/pvp/maps/GibsonDesertWars.java b/src/main/java/sbs/mira/pvp/maps/GibsonDesertWars.java
+index 9742e55..9b2b097 100644
+--- a/src/main/java/sbs/mira/pvp/maps/GibsonDesertWars.java
++++ b/src/main/java/sbs/mira/pvp/maps/GibsonDesertWars.java
+@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
+ import sbs.mira.pvp.framework.game.WarTeam;
+ import sbs.mira.pvp.framework.stored.SerializedLocation;
+ import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.game.Map;
++import sbs.mira.pvp.model.map.MiraMapModelConcrete;
+ import sbs.mira.pvp.game.modes.DTM;
+ import org.bukkit.ChatColor;
+ import org.bukkit.Material;
+@@ -14,7 +14,8 @@ import org.bukkit.inventory.PlayerInventory;
+ import java.util.UUID;
+ 
+ @SuppressWarnings("Duplicates")
+-public class GibsonDesertWars extends Map {
++public class GibsonDesertWars extends MiraMapModelConcrete
++{
+ 
+     private final UUID[] creators = {id("d04d579e-78ed-4c60-87d4-39ef95755be6"),id("5435a69c-d78a-46d7-bba1-02b1c9ed71b9")};
+     private final String mapName = "Gibson Desert Wars";
+@@ -23,18 +24,18 @@ public class GibsonDesertWars extends Map {
+     private final WarTeam team1 = new WarTeam("Blue Team", ChatColor.BLUE, 25);
+     private final WarTeam team2 = new WarTeam("Red Team", ChatColor.RED, 25);
+ 
+-    protected void readyAttributes() {
+-        setMapName(mapName);
+-        setCreators(creators);
+-        setGamemodes(gamemodes);
+-        registerTeam(team1);
+-        registerTeam(team2);
++    protected void define_rules( ) {
++        label( mapName );
++        creators( creators );
++        game_modes( gamemodes );
++        team( team1 );
++        team( team2 );
+         setAllowBuild(true, true);
+         setBuildBoundary(-30, -119, 215, 28);
+         objectives().add(new DTM.Monument(154, 80, -49, 158, 81, -48, team1, main, false, Material.SMOOTH_BRICK));
+         objectives().add(new DTM.Monument(25, 80, -44, 29, 81, -43, team2, main, false, Material.SMOOTH_BRICK));
+-        setTimeLockTime(4000);
+-        setMatchDuration(600);
++        time_lock_time( 4000 );
++        match_duration( 600 );
+     }
+ 
+     protected void readySpawns() {
+@@ -44,7 +45,7 @@ public class GibsonDesertWars extends Map {
+         addTeamSpawn(team2, new SerializedLocation(-11.5, 61, 9.5, 180, 0));
+         addTeamSpawn(team2, new SerializedLocation(-25.5, 75, -4.5, 225, 0));
+         addTeamSpawn(team2, new SerializedLocation(15.5, 73, 11.5, 135, 0));
+-        setSpectatorSpawn(new SerializedLocation(92, 82, -45.5, 90, 15));
++        spectator_spawn_position( new SerializedLocation( 92, 82, -45.5, 90, 15) );
+     }
+ 
+     @Override
+diff --git a/src/main/java/sbs/mira/pvp/maps/MaplebankWoods.java b/src/main/java/sbs/mira/pvp/maps/MaplebankWoods.java
+index af23c78..3d6070f 100644
+--- a/src/main/java/sbs/mira/pvp/maps/MaplebankWoods.java
++++ b/src/main/java/sbs/mira/pvp/maps/MaplebankWoods.java
+@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
+ import sbs.mira.pvp.framework.game.WarTeam;
+ import sbs.mira.pvp.framework.stored.SerializedLocation;
+ import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.game.Map;
++import sbs.mira.pvp.model.map.MiraMapModelConcrete;
+ import sbs.mira.pvp.game.modes.DTM;
+ import sbs.mira.pvp.game.util.SpawnArea;
+ import org.bukkit.ChatColor;
+@@ -15,7 +15,8 @@ import org.bukkit.inventory.PlayerInventory;
+ import java.util.UUID;
+ 
+ @SuppressWarnings("Duplicates")
+-public class MaplebankWoods extends Map {
++public class MaplebankWoods extends MiraMapModelConcrete
++{
+ 
+     private final UUID[] creators = {id("2e1c067c-6f09-4db0-8cd7-defc12ce622e"), id("5bed8f4c-6c40-485a-a4be-eb7c9f3627d1")};
+     private final String mapName = "Maplebank Woods";
+@@ -24,12 +25,12 @@ public class MaplebankWoods extends Map {
+     private final WarTeam team1 = new WarTeam("Forest Team", ChatColor.DARK_GREEN, 25);
+     private final WarTeam team2 = new WarTeam("River Team", ChatColor.DARK_AQUA, 25);
+ 
+-    protected void readyAttributes() {
+-        setMapName(mapName);
+-        setCreators(creators);
+-        setGamemodes(gamemodes);
+-        registerTeam(team1);
+-        registerTeam(team2);
++    protected void define_rules( ) {
++        label( mapName );
++        creators( creators );
++        game_modes( gamemodes );
++        team( team1 );
++        team( team2 );
+         setAllowBuild(true, true);
+         setPlateauY(59);
+         objectives().add(new DTM.Monument(-13, 102, 33, -11, 106, 35, team1, main, false, Material.OBSIDIAN));
+@@ -37,14 +38,14 @@ public class MaplebankWoods extends Map {
+         objectives().add(new SpawnArea(main, -18, 85, -8, 94, false, false));
+         objectives().add(new SpawnArea(main, 36, 85, 46, 94, false, false));
+         attr().put("kothFlag", new SerializedLocation(14, 100, -7));
+-        setTimeLockTime(14000);
+-        setMatchDuration(600);
++        time_lock_time( 14000 );
++        match_duration( 600 );
+     }
+ 
+     protected void readySpawns() {
+         addTeamSpawn(team1, new SerializedLocation(-13.5, 90, 90.5, 180, 0));
+         addTeamSpawn(team2, new SerializedLocation(41.5, 90, 90.5, 180, 0));
+-        setSpectatorSpawn(new SerializedLocation(14.5, 97, 114.5, 180, 0));
++        spectator_spawn_position( new SerializedLocation( 14.5, 97, 114.5, 180, 0) );
+     }
+ 
+     @Override
+diff --git a/src/main/java/sbs/mira/pvp/maps/Mutiny.java b/src/main/java/sbs/mira/pvp/maps/Mutiny.java
+index fb8e54a..76c9a45 100644
+--- a/src/main/java/sbs/mira/pvp/maps/Mutiny.java
++++ b/src/main/java/sbs/mira/pvp/maps/Mutiny.java
+@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
+ import sbs.mira.pvp.framework.game.WarTeam;
+ import sbs.mira.pvp.framework.stored.SerializedLocation;
+ import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.game.Map;
++import sbs.mira.pvp.model.map.MiraMapModelConcrete;
+ import sbs.mira.pvp.game.util.AntiTeamGrief;
+ import sbs.mira.pvp.game.util.SpawnArea;
+ import org.bukkit.ChatColor;
+@@ -15,7 +15,8 @@ import org.bukkit.inventory.PlayerInventory;
+ import java.util.UUID;
+ 
+ @SuppressWarnings("Duplicates")
+-public class Mutiny extends Map {
++public class Mutiny extends MiraMapModelConcrete
++{
+ 
+     private final UUID[] creators = {id("2e1c067c-6f09-4db0-8cd7-defc12ce622e"), id("a40cdbc0-ce09-4c56-a1a8-7732394b6ad4")};
+     private final String mapName = "Mutiny";
+@@ -24,12 +25,12 @@ public class Mutiny extends Map {
+     private final WarTeam team1 = new WarTeam("Captains", ChatColor.BLUE, 30);
+     private final WarTeam team2 = new WarTeam("Corsairs", ChatColor.RED, 30);
+ 
+-    protected void readyAttributes() {
+-        setMapName(mapName);
+-        setCreators(creators);
+-        setGamemodes(gamemodes);
+-        registerTeam(team1);
+-        registerTeam(team2);
++    protected void define_rules( ) {
++        label( mapName );
++        creators( creators );
++        game_modes( gamemodes );
++        team( team1 );
++        team( team2 );
+         setAllowBuild(true, true);
+         setBuildBoundary(-45, -77, 54, 32);
+         objectives().add(new SpawnArea(main, -26, 12, -24, 14, false, true));
+@@ -40,8 +41,8 @@ public class Mutiny extends Map {
+         objectives().add(new SpawnArea(main, 30, -60, 32, -58, false, true));
+         objectives().add(new AntiTeamGrief(main, team1.getTeamColor(), -45, -77, 54, -41, true));
+         objectives().add(new AntiTeamGrief(main, team2.getTeamColor(), -45, -5, 54, 31, true));
+-        setTimeLockTime(4000);
+-        setMatchDuration(600);
++        time_lock_time( 4000 );
++        match_duration( 600 );
+     }
+ 
+     protected void readySpawns() {
+@@ -51,7 +52,7 @@ public class Mutiny extends Map {
+         addTeamSpawn(team2, new SerializedLocation(32.5, 94, 12.5, 180, 0));
+         addTeamSpawn(team2, new SerializedLocation(3.5, 85, 6.5, 180, 0));
+         addTeamSpawn(team2, new SerializedLocation(-24.5, 91, 13.5, 180, 0));
+-        setSpectatorSpawn(new SerializedLocation(-56.5, 86.5, -23.5, 270, 0));
++        spectator_spawn_position( new SerializedLocation( -56.5, 86.5, -23.5, 270, 0) );
+     }
+ 
+     @Override
+diff --git a/src/main/java/sbs/mira/pvp/maps/Roseley.java b/src/main/java/sbs/mira/pvp/maps/Roseley.java
+index 0cb6d3d..9c243b2 100644
+--- a/src/main/java/sbs/mira/pvp/maps/Roseley.java
++++ b/src/main/java/sbs/mira/pvp/maps/Roseley.java
+@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
+ import sbs.mira.pvp.framework.game.WarTeam;
+ import sbs.mira.pvp.framework.stored.SerializedLocation;
+ import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.game.Map;
++import sbs.mira.pvp.model.map.MiraMapModelConcrete;
+ import sbs.mira.pvp.game.util.RadialSpawnPoint;
+ import sbs.mira.pvp.game.util.SpawnArea;
+ import org.bukkit.ChatColor;
+@@ -23,7 +23,8 @@ import org.bukkit.potion.PotionEffectType;
+ import java.util.UUID;
+ 
+ @SuppressWarnings("Duplicates")
+-public class Roseley extends Map {
++public class Roseley extends MiraMapModelConcrete
++{
+ 
+     private final UUID[] creators = {id("2e1c067c-6f09-4db0-8cd7-defc12ce622e"), id("a40cdbc0-ce09-4c56-a1a8-7732394b6ad4")};
+     private final String mapName = "Roseley";
+@@ -34,25 +35,25 @@ public class Roseley extends Map {
+ 
+     private final ItemStack GRAPPLE_HOOK = createGadget(Material.FISHING_ROD, 1, 0, "Grapple Hook", "Throw, and pull!");
+ 
+-    protected void readyAttributes() {
+-        setMapName(mapName);
+-        setCreators(creators);
+-        setGamemodes(gamemodes);
+-        registerTeam(team1);
+-        registerTeam(team2);
++    protected void define_rules( ) {
++        label( mapName );
++        creators( creators );
++        game_modes( gamemodes );
++        team( team1 );
++        team( team2 );
+         setAllowBuild(false, false);
+         objectives().add(new SpawnArea(main, -59, 56, -45, 59, true, true));
+         objectives().add(new SpawnArea(main, -10, 1, -1, 10, true, true));
+         addCTFFlag(team1.getTeamName(), new SerializedLocation(-30, 74, 10));
+         addCTFFlag(team2.getTeamName(), new SerializedLocation(-34, 76, 54));
+-        setTimeLockTime(11000);
+-        setMatchDuration(600);
++        time_lock_time( 11000 );
++        match_duration( 600 );
+     }
+ 
+     protected void readySpawns() {
+         addTeamSpawn(team1, new RadialSpawnPoint(main.rng, -5.5, 68, 5.5, 45, 0, 3, 3));
+         addTeamSpawn(team2, new RadialSpawnPoint(main.rng, -52.5, 68, 58.5, 180, 0, 7, 1));
+-        setSpectatorSpawn(new RadialSpawnPoint(main.rng, -47.5, 74, 5.5, 315, 0, 1, 1));
++        spectator_spawn_position( new RadialSpawnPoint( main.rng, -47.5, 74, 5.5, 315, 0, 1, 1) );
+     }
+ 
+     @Override
+diff --git a/src/main/java/sbs/mira/pvp/maps/SanguineShores.java b/src/main/java/sbs/mira/pvp/maps/SanguineShores.java
+index a6ce31a..4c201c3 100644
+--- a/src/main/java/sbs/mira/pvp/maps/SanguineShores.java
++++ b/src/main/java/sbs/mira/pvp/maps/SanguineShores.java
+@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
+ import sbs.mira.pvp.framework.game.WarTeam;
+ import sbs.mira.pvp.framework.stored.SerializedLocation;
+ import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.game.Map;
++import sbs.mira.pvp.model.map.MiraMapModelConcrete;
+ import sbs.mira.pvp.game.util.SpawnArea;
+ import org.bukkit.ChatColor;
+ import org.bukkit.Material;
+@@ -15,7 +15,8 @@ import org.bukkit.potion.PotionEffectType;
+ import java.util.UUID;
+ 
+ @SuppressWarnings("Duplicates")
+-public class SanguineShores extends Map {
++public class SanguineShores extends MiraMapModelConcrete
++{
+ 
+     private final UUID[] creators = {id("2e1c067c-6f09-4db0-8cd7-defc12ce622e"), id("a40cdbc0-ce09-4c56-a1a8-7732394b6ad4")};
+     private final String mapName = "Sanguine Shores";
+@@ -24,24 +25,24 @@ public class SanguineShores extends Map {
+     private final WarTeam team1 = new WarTeam("Tourists", ChatColor.DARK_PURPLE, 20);
+     private final WarTeam team2 = new WarTeam("Locals", ChatColor.AQUA, 20);
+ 
+-    protected void readyAttributes() {
+-        setMapName(mapName);
+-        setCreators(creators);
+-        setGamemodes(gamemodes);
+-        registerTeam(team1);
+-        registerTeam(team2);
++    protected void define_rules( ) {
++        label( mapName );
++        creators( creators );
++        game_modes( gamemodes );
++        team( team1 );
++        team( team2 );
+         setAllowBuild(false, false);
+         attr().put("kothFlag", new SerializedLocation(0,93,0));
+         objectives().add(new SpawnArea(main, -69, 2, -67, 4, true, true));
+         objectives().add(new SpawnArea(main, 67, -4, 69, -2, true, true));
+-        setTimeLockTime(5000);
+-        setMatchDuration(600);
++        time_lock_time( 5000 );
++        match_duration( 600 );
+     }
+ 
+     protected void readySpawns() {
+         addTeamSpawn(team1, new SerializedLocation(68.5, 93, -2.5, 90, 0));
+         addTeamSpawn(team2, new SerializedLocation(-67.5, 93, 3.5, 270, 0));
+-        setSpectatorSpawn(new SerializedLocation(15.5, 82, 26.5, 225, 0));
++        spectator_spawn_position( new SerializedLocation( 15.5, 82, 26.5, 225, 0) );
+     }
+ 
+     @Override
+diff --git a/src/main/java/sbs/mira/pvp/maps/SanguineShoresII.java b/src/main/java/sbs/mira/pvp/maps/SanguineShoresII.java
+index 778feb3..783965a 100644
+--- a/src/main/java/sbs/mira/pvp/maps/SanguineShoresII.java
++++ b/src/main/java/sbs/mira/pvp/maps/SanguineShoresII.java
+@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
+ import sbs.mira.pvp.framework.game.WarTeam;
+ import sbs.mira.pvp.framework.stored.SerializedLocation;
+ import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.game.Map;
++import sbs.mira.pvp.model.map.MiraMapModelConcrete;
+ import sbs.mira.pvp.game.util.RadialSpawnPoint;
+ import sbs.mira.pvp.game.util.SpawnArea;
+ import org.bukkit.ChatColor;
+@@ -15,7 +15,8 @@ import org.bukkit.inventory.PlayerInventory;
+ import java.util.UUID;
+ 
+ @SuppressWarnings("Duplicates")
+-public class SanguineShoresII extends Map {
++public class SanguineShoresII extends MiraMapModelConcrete
++{
+ 
+     private final UUID[] creators = {id("2e1c067c-6f09-4db0-8cd7-defc12ce622e"), id("a40cdbc0-ce09-4c56-a1a8-7732394b6ad4")};
+     private final String mapName = "Sanguine Shores II";
+@@ -24,12 +25,12 @@ public class SanguineShoresII extends Map {
+     private final WarTeam team1 = new WarTeam("Red Team", ChatColor.RED, 25);
+     private final WarTeam team2 = new WarTeam("Blue Team", ChatColor.BLUE, 25);
+ 
+-    protected void readyAttributes() {
+-        setMapName(mapName);
+-        setCreators(creators);
+-        setGamemodes(gamemodes);
+-        registerTeam(team1);
+-        registerTeam(team2);
++    protected void define_rules( ) {
++        label( mapName );
++        creators( creators );
++        game_modes( gamemodes );
++        team( team1 );
++        team( team2 );
+         setAllowBuild(true, true);
+         setPlateauY(35);
+         objectives().add(new SpawnArea(main, 86, -7, 100, 7, true, true));
+@@ -37,14 +38,14 @@ public class SanguineShoresII extends Map {
+         attr().put("captureRequirement", 2);
+         addCTFFlag(team1.getTeamName(), new SerializedLocation(70, 59, -18));
+         addCTFFlag(team2.getTeamName(), new SerializedLocation(-23, 59, -4));
+-        setTimeLockTime(6000);
+-        setMatchDuration(600);
++        time_lock_time( 6000 );
++        match_duration( 600 );
+     }
+ 
+     protected void readySpawns() {
+         addTeamSpawn(team1, new RadialSpawnPoint(main.rng, 93.5, 57, 0.5, 90, 0, 4, 4));
+         addTeamSpawn(team2, new RadialSpawnPoint(main.rng, -46.5, 57, -22.5, 270, 0, 4, 4));
+-        setSpectatorSpawn(new RadialSpawnPoint(main.rng, 24, 55, -53.5, 0, 0, 2, 1));
++        spectator_spawn_position( new RadialSpawnPoint( main.rng, 24, 55, -53.5, 0, 0, 2, 1) );
+     }
+ 
+     @Override
+diff --git a/src/main/java/sbs/mira/pvp/maps/Squared.java b/src/main/java/sbs/mira/pvp/maps/Squared.java
+index d84e742..e45361e 100644
+--- a/src/main/java/sbs/mira/pvp/maps/Squared.java
++++ b/src/main/java/sbs/mira/pvp/maps/Squared.java
+@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
+ import sbs.mira.pvp.framework.game.WarTeam;
+ import sbs.mira.pvp.framework.stored.SerializedLocation;
+ import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.game.Map;
++import sbs.mira.pvp.model.map.MiraMapModelConcrete;
+ import sbs.mira.pvp.game.modes.DTM;
+ import sbs.mira.pvp.game.util.SpawnArea;
+ import org.bukkit.ChatColor;
+@@ -15,7 +15,8 @@ import org.bukkit.inventory.PlayerInventory;
+ import java.util.UUID;
+ 
+ @SuppressWarnings("Duplicates")
+-public class Squared extends Map {
++public class Squared extends MiraMapModelConcrete
++{
+ 
+     private final UUID[] creators = {id("2e1c067c-6f09-4db0-8cd7-defc12ce622e"), id("a40cdbc0-ce09-4c56-a1a8-7732394b6ad4")};
+     private final String mapName = "Squared";
+@@ -24,21 +25,21 @@ public class Squared extends Map {
+     private final WarTeam team1 = new WarTeam("Green Team", ChatColor.GREEN, 25);
+     private final WarTeam team2 = new WarTeam("Red Team", ChatColor.RED, 25);
+ 
+-    protected void readyAttributes() {
+-        setMapName(mapName);
+-        setCreators(creators);
+-        setGamemodes(gamemodes);
+-        registerTeam(team1);
+-        registerTeam(team2);
++    protected void define_rules( ) {
++        label( mapName );
++        creators( creators );
++        game_modes( gamemodes );
++        team( team1 );
++        team( team2 );
+         setAllowBuild(true, true);
+         setBuildBoundary(-103, -51, 12, 12);
+-        setBuildHeight(185);
++        maximum_build_height( 185 );
+         objectives().add(new SpawnArea(main, -118, -34, -105, -5, true, false));
+         objectives().add(new SpawnArea(main, 14, -34, 27, -5, true, false));
+         objectives().add(new DTM.Monument(-11, 93, -24, -8, 98, -15, team1, main, true, Material.STAINED_CLAY));
+         objectives().add(new DTM.Monument(-83, 93, -24, -80, 98, -15, team2, main, true, Material.STAINED_CLAY));
+-        setTimeLockTime(12000);
+-        setMatchDuration(600);
++        time_lock_time( 12000 );
++        match_duration( 600 );
+     }
+ 
+     protected void readySpawns() {
+@@ -46,7 +47,7 @@ public class Squared extends Map {
+         addTeamSpawn(team1, new SerializedLocation(23, 93, -23.5, 0, 0));
+         addTeamSpawn(team2, new SerializedLocation(-113, 93, -14.5, 180, 0));
+         addTeamSpawn(team2, new SerializedLocation(-113, 93, -23.5, 0, 0));
+-        setSpectatorSpawn(new SerializedLocation(-45, 103, -68, 0, 15));
++        spectator_spawn_position( new SerializedLocation( -45, 103, -68, 0, 15) );
+     }
+ 
+     @Override
+diff --git a/src/main/java/sbs/mira/pvp/maps/TheRebellion.java b/src/main/java/sbs/mira/pvp/maps/TheRebellion.java
+index e9cdbe4..f239edb 100644
+--- a/src/main/java/sbs/mira/pvp/maps/TheRebellion.java
++++ b/src/main/java/sbs/mira/pvp/maps/TheRebellion.java
+@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
+ import sbs.mira.pvp.framework.game.WarTeam;
+ import sbs.mira.pvp.framework.stored.SerializedLocation;
+ import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.game.Map;
++import sbs.mira.pvp.model.map.MiraMapModelConcrete;
+ import sbs.mira.pvp.game.modes.DTM;
+ import sbs.mira.pvp.game.util.SpawnArea;
+ import org.bukkit.ChatColor;
+@@ -16,7 +16,8 @@ import org.bukkit.potion.PotionEffectType;
+ import java.util.UUID;
+ 
+ @SuppressWarnings("Duplicates")
+-public class TheRebellion extends Map {
++public class TheRebellion extends MiraMapModelConcrete
++{
+ 
+     private final UUID[] creators = {id("2e1c067c-6f09-4db0-8cd7-defc12ce622e"), id("5bed8f4c-6c40-485a-a4be-eb7c9f3627d1")};
+     private final String mapName = "The Rebellion";
+@@ -25,23 +26,23 @@ public class TheRebellion extends Map {
+     private final WarTeam team1 = new WarTeam("Protectors", ChatColor.RED, 30);
+     private final WarTeam team2 = new WarTeam("Invaders", ChatColor.BLUE, 30);
+ 
+-    protected void readyAttributes() {
+-        setMapName(mapName);
+-        setCreators(creators);
+-        setGamemodes(gamemodes);
+-        registerTeam(team1);
+-        registerTeam(team2);
++    protected void define_rules( ) {
++        label( mapName );
++        creators( creators );
++        game_modes( gamemodes );
++        team( team1 );
++        team( team2 );
+         setAllowBuild(true, true);
+         setPlateauY(65);
+-        setDisabledDrops(new Material[]{Material.IRON_PICKAXE, Material.DIAMOND_PICKAXE});
++        disabled_drops( new Material[]{ Material.IRON_PICKAXE, Material.DIAMOND_PICKAXE} );
+         objectives().add(new DTM.Monument(-96, 137, 73, -93, 139, 76, team1, main, false, Material.PRISMARINE));
+         objectives().add(new DTM.Monument(-23, 89, 32, -21, 92, 34, team2, main, false, Material.OBSIDIAN));
+         objectives().add(new SpawnArea(main, -28, 10, -25, 13, false, true));
+         objectives().add(new SpawnArea(main, -15, 37, -12, 40, false, true));
+         objectives().add(new SpawnArea(main, -72, 95, -62, 105, false, true));
+         objectives().add(new SpawnArea(main, -117, 38, -107, 48, false, true));
+-        setTimeLockTime(12000);
+-        setMatchDuration(600);
++        time_lock_time( 12000 );
++        match_duration( 600 );
+     }
+ 
+     protected void readySpawns() {
+@@ -49,7 +50,7 @@ public class TheRebellion extends Map {
+         addTeamSpawn(team1, new SerializedLocation(-67.5, 146, 100.5, 0, 0));
+         addTeamSpawn(team2, new SerializedLocation(-13, 89, 39, 135, 0));
+         addTeamSpawn(team2, new SerializedLocation(-26, 89, 12, 45, 0));
+-        setSpectatorSpawn(new SerializedLocation(-12.5, 96, 19.5, 45, -15));
++        spectator_spawn_position( new SerializedLocation( -12.5, 96, 19.5, 45, -15) );
+     }
+ 
+     @Override
+diff --git a/src/main/java/sbs/mira/pvp/maps/Xenon.java b/src/main/java/sbs/mira/pvp/maps/Xenon.java
+index 0f52e2b..700feee 100644
+--- a/src/main/java/sbs/mira/pvp/maps/Xenon.java
++++ b/src/main/java/sbs/mira/pvp/maps/Xenon.java
+@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
+ import sbs.mira.pvp.framework.game.WarTeam;
+ import sbs.mira.pvp.framework.stored.SerializedLocation;
+ import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.game.Map;
++import sbs.mira.pvp.model.map.MiraMapModelConcrete;
+ import org.bukkit.ChatColor;
+ import org.bukkit.Location;
+ import org.bukkit.Material;
+@@ -17,7 +17,8 @@ import org.bukkit.util.Vector;
+ import java.util.UUID;
+ 
+ @SuppressWarnings("Duplicates")
+-public class Xenon extends Map {
++public class Xenon extends MiraMapModelConcrete
++{
+ 
+     private final UUID[] creators = {id("df5fd9f4-4840-4293-9346-5c77bf7bc08f")};
+     private final String mapName = "Xenon";
+@@ -25,14 +26,14 @@ public class Xenon extends Map {
+ 
+     private final WarTeam team1 = new WarTeam("Green Team", ChatColor.GREEN, 25);
+ 
+-    protected void readyAttributes() {
+-        setMapName(mapName);
+-        setCreators(creators);
+-        setGamemodes(gamemodes);
+-        registerTeam(team1);
++    protected void define_rules( ) {
++        label( mapName );
++        creators( creators );
++        game_modes( gamemodes );
++        team( team1 );
+         setAllowBuild(false, false);
+-        setTimeLockTime(18000);
+-        setMatchDuration(300);
++        time_lock_time( 18000 );
++        match_duration( 300 );
+     }
+ 
+     protected void readySpawns() {
+@@ -66,7 +67,7 @@ public class Xenon extends Map {
+         addTeamSpawn(team1, new SerializedLocation(59.5, 2, -12.5, 90, 0));
+         addTeamSpawn(team1, new SerializedLocation(71.5, 2, 23.5, 135, 0));
+         addTeamSpawn(team1, new SerializedLocation(35.5, 2, -13.5, 315, 0));
+-        setSpectatorSpawn(new SerializedLocation(53.5, 3, 40.5, 180, 0));
++        spectator_spawn_position( new SerializedLocation( 53.5, 3, 40.5, 180, 0) );
+     }
+ 
+     @Override
+diff --git a/src/main/java/sbs/mira/pvp/model/MiraLobbyModel.java b/src/main/java/sbs/mira/pvp/model/MiraLobbyModel.java
+index ca43ed9..2053cd5 100644
+--- a/src/main/java/sbs/mira/pvp/model/MiraLobbyModel.java
++++ b/src/main/java/sbs/mira/pvp/model/MiraLobbyModel.java
+@@ -8,6 +8,8 @@ import org.jetbrains.annotations.Nullable;
+ import sbs.mira.core.MiraModel;
+ import sbs.mira.pvp.MiraVersePlayer;
+ import sbs.mira.pvp.MiraVersePulse;
++import sbs.mira.pvp.model.map.MiraMapModelConcrete;
++import sbs.mira.pvp.model.match.MiraMatchModel;
+ 
+ import java.io.File;
+ import java.io.IOException;
+@@ -128,9 +130,11 @@ class MiraLobbyModel
+     return this.bukkit_team;
+   }
+   
+-  public @Nullable
++  public @NotNull
+   MiraMatchModel match( )
+   {
++    assert this.match != null;
++    
+     return this.match;
+   }
+   
+@@ -155,18 +159,6 @@ class MiraLobbyModel
+     );
+   }
+   
+-  /**
+-   * @param player_uuid the uuid of a player - who may or may not exist.
+-   * @return true - if the associated player exists and is assigned to a team.
+-   */
+-  public
+-  boolean is_participating( @NotNull UUID player_uuid )
+-  {
+-    MiraVersePlayer player = this.pulse( ).model( ).player( player_uuid );
+-    
+-    return player != null && player.has_team( );
+-  }
+-  
+   /*—[lobby lifecycle steps]——————————————————————————————————————————————————*/
+   
+   /**
+diff --git a/src/main/java/sbs/mira/pvp/model/map/MiraMapModel.java b/src/main/java/sbs/mira/pvp/model/map/MiraMapModel.java
+index 62a923b..707b235 100644
+--- a/src/main/java/sbs/mira/pvp/model/map/MiraMapModel.java
++++ b/src/main/java/sbs/mira/pvp/model/map/MiraMapModel.java
+@@ -1,6 +1,5 @@
+-package sbs.mira.pvp.model;
++package sbs.mira.pvp.model.map;
+ 
+-import org.bukkit.Location;
+ import org.bukkit.Material;
+ import org.bukkit.entity.Hanging;
+ import org.bukkit.event.EventHandler;
+@@ -16,8 +15,10 @@ import org.bukkit.inventory.ItemStack;
+ import org.jetbrains.annotations.NotNull;
+ import org.jetbrains.annotations.Nullable;
+ import sbs.mira.core.MiraModel;
++import sbs.mira.core.model.Position;
+ import sbs.mira.pvp.MiraVersePlayer;
+ import sbs.mira.pvp.MiraVersePulse;
++import sbs.mira.pvp.model.match.MiraGameModeType;
+ 
+ import java.util.*;
+ 
+@@ -81,13 +82,14 @@ class MiraMapModel
+   private @Nullable String display_name;
+   private final @NotNull Set<MiraGameModeType> allowed_game_mode_types;
+   private final @NotNull Map<String, MiraTeamModel> teams;
+-  private final @NotNull Map<String, ArrayList<Location>> team_spawn_locations;
+-  protected @Nullable Location spectator_spawn_location;
++  private final @NotNull Map<String, ArrayList<Position>> team_spawn_positions;
++  protected @Nullable Position spectator_spawn_position;
+   
+   private final @NotNull List<Object> objectives;
+   
+   private boolean active;
+   
++  /*—[interface]——————————————————————————————————————————————————————————————*/
+   
+   protected
+   MiraMapModel( @NotNull MiraVersePulse pulse )
+@@ -109,12 +111,11 @@ class MiraMapModel
+     this.time_lock_time = -1;
+     
+     this.excluded_death_drops = new HashSet<>( );
+-    this.excluded_death_drops.addAll( List.of( this.default_excluded_death_drops( ) ) );
+     
+     this.creators = new HashSet<>( );
+     this.allowed_game_mode_types = new HashSet<>( );
+     this.teams = new HashMap<>( );
+-    this.team_spawn_locations = new HashMap<>( );
++    this.team_spawn_positions = new HashMap<>( );
+     this.objectives = new ArrayList<>( );
+     
+     this.active = false;
+@@ -133,55 +134,31 @@ class MiraMapModel
+   protected abstract
+   void define_spawns( );
+   
++  /*—[interactions]———————————————————————————————————————————————————————————*/
++  
+   /**
+    * Applies a player's inventory then updates it.
+    * <p>
+    * This is the procedure your actual program should
+    * use, as it clears their inventory and updates it.
+    *
+-   * @param target The player to apply.
++   * @param player The player to apply.
+    */
+   public
+-  void applyInv( MiraVersePlayer target )
++  void apply_inventory( @NotNull MiraVersePlayer player )
+   {
+-    this.pulse( ).model( ).items( ).clear( target );
+-    this.applyInventory( target );
++    this.pulse( ).model( ).items( ).clear( player );
+     
+-    target.crafter( ).updateInventory( );
++    //this.applyInventory( target ); override in child class.
+   }
+   
+-  /**
+-   * Applies a player's inventory for the map.
+-   * <p>
+-   * Extend this procedure to give the relevant player
+-   * their kit for this map when they spawn or respawn.
+-   *
+-   * @param player The player to apply.
+-   */
+-  public abstract
+-  void applyInventory( MiraVersePlayer player );
+-  
+   public
+   List<Object> objectives( )
+   {
+     return objectives;
+   }
+   
+-  
+-  /**
+-   * allows the three given building rules to be toggled.
+-   */
+-  protected
+-  void building_rules(
+-    boolean allow_block_break,
+-    boolean allow_block_place,
+-    boolean allow_block_explode
+-                     )
+-  {
+-    this.allow_block_break = allow_block_break;
+-    this.allow_block_place = allow_block_place;
+-    this.allow_block_explode = allow_block_explode;
+-  }
++  /*——————————————————————————————————————————————————————————————————————————*/
+   
+   /**
+    * Define the region in which blocks can be interacted with.
+@@ -203,53 +180,6 @@ class MiraMapModel
+       new SerializedLocation( Math.max( x1, x2 ), 0, Math.max( z1, z2 ) ) );*/
+   }
+   
+-  protected
+-  Material[] default_excluded_death_drops( )
+-  {
+-    return new Material[]{
+-      Material.LEATHER_BOOTS,
+-      Material.LEATHER_LEGGINGS,
+-      Material.LEATHER_CHESTPLATE,
+-      Material.LEATHER_HELMET,
+-      Material.WOODEN_SWORD,
+-      Material.STONE_SWORD,
+-      Material.IRON_BOOTS,
+-      Material.IRON_LEGGINGS,
+-      Material.IRON_CHESTPLATE,
+-      Material.IRON_HELMET,
+-      Material.IRON_SWORD,
+-      Material.GOLDEN_BOOTS,
+-      Material.GOLDEN_LEGGINGS,
+-      Material.GOLDEN_CHESTPLATE,
+-      Material.GOLDEN_HELMET,
+-      Material.GOLDEN_SWORD,
+-      Material.BOW,
+-      Material.DIAMOND_BOOTS,
+-      Material.DIAMOND_LEGGINGS,
+-      Material.DIAMOND_CHESTPLATE,
+-      Material.DIAMOND_HELMET,
+-      Material.DIAMOND_SWORD,
+-      Material.ARROW,
+-      Material.FISHING_ROD,
+-      Material.GLASS_BOTTLE,
+-      Material.WHITE_WOOL,
+-      Material.CHAINMAIL_BOOTS,
+-      Material.CHAINMAIL_LEGGINGS,
+-      Material.CHAINMAIL_CHESTPLATE,
+-      Material.CHAINMAIL_HELMET,
+-      Material.IRON_AXE,
+-      Material.IRON_PICKAXE,
+-      Material.STONE_PICKAXE,
+-      Material.STONE_AXE,
+-      Material.WOODEN_AXE,
+-      Material.STONE_HOE,
+-      Material.GOLDEN_HOE,
+-      Material.IRON_HOE,
+-      Material.DIAMOND_HOE,
+-      Material.DIAMOND_PICKAXE
+-    };
+-  }
+-  
+   /*—[getters / setters]——————————————————————————————————————————————————————*/
+   
+   public @NotNull
+@@ -284,92 +214,61 @@ class MiraMapModel
+   
+   /*——————————————————————————————————————————————————————————————————————————*/
+   
+-  protected
+-  void time_lock_time( long time_lock_time )
+-  {
+-    this.time_lock_time = time_lock_time;
+-  }
+-  
+-  /*——————————————————————————————————————————————————————————————————————————*/
+-  
+-  protected
+-  void maximum_build_height( short maximum_build_height )
++  public @NotNull
++  Position spectator_spawn_position( )
+   {
+-    this.maximum_build_height = maximum_build_height;
++    assert this.spectator_spawn_position != null;
++    
++    return this.spectator_spawn_position;
+   }
+   
+-  /*——————————————————————————————————————————————————————————————————————————*/
+-  
+   protected
+-  void exclude_from_death_drops( @NotNull Material material )
++  void spectator_spawn_position( @NotNull Position spectator_spawn_position )
+   {
+-    this.excluded_death_drops.add( material );
++    this.spectator_spawn_position = spectator_spawn_position;
+   }
+   
+   /*——————————————————————————————————————————————————————————————————————————*/
+   
+-  public
+-  short match_duration( )
+-  {
+-    return this.match_duration;
+-  }
+-  
+   protected
+-  void match_duration( short match_duration )
++  void team( @NotNull MiraTeamModel team )
+   {
+-    this.match_duration = match_duration;
++    this.teams.put( team.label( ), team );
+   }
+   
+-  /*——————————————————————————————————————————————————————————————————————————*/
+-  
+   public @NotNull
+-  Location spectator_spawn_location( )
+-  {
+-    assert this.spectator_spawn_location != null;
+-    
+-    return this.spectator_spawn_location;
+-  }
+-  
+-  protected
+-  void spectator_spawn_location( @NotNull Location spectator_spawn_location )
++  Collection<MiraTeamModel> teams( )
+   {
+-    this.spectator_spawn_location = spectator_spawn_location;
++    return this.teams.values( );
+   }
+   
+   /*——————————————————————————————————————————————————————————————————————————*/
+   
+   protected
+-  void team( @NotNull MiraTeamModel team )
++  void allow_game_mode_type( @NotNull MiraGameModeType game_mode_type )
+   {
+-    this.teams.put( team.label( ), team );
++    this.allowed_game_mode_types.add( game_mode_type );
+   }
+   
+-  public @NotNull
+-  Collection<MiraTeamModel> teams( )
++  protected
++  Set<MiraGameModeType> allowed_game_mode_types( )
+   {
+-    return teams.values( );
++    return this.allowed_game_mode_types;
+   }
+   
+   /*——————————————————————————————————————————————————————————————————————————*/
+   
+   public @NotNull
+-  List<Location> team_spawns( MiraTeamModel team )
++  List<Position> team_spawn_positions( MiraTeamModel team )
+   {
+-    return this.team_spawn_locations.get( team.label( ) );
++    return this.team_spawn_positions.get( team.label( ) );
+   }
+   
+   protected
+-  void team_spawn( MiraTeamModel team, SerializedLocation spawn )
++  void team_spawn( @NotNull String team_label, @NotNull Position team_spawn_position )
+   {
+-    if ( !team_spawn_locations.containsKey( team.toString( ) ) )
+-    {
+-      team_spawn_locations.put(
+-        team.toString( ),
+-        new ArrayList<>( ) ); // Initialize the array list first!
+-    }
+-    team_spawn_locations
+-      .get( team.toString( ) )
+-      .add( spawn ); // Add the team spawn to the team's spawn list.
++    this.team_spawn_positions.putIfAbsent( team_label, new ArrayList<>( ) );
++    this.team_spawn_positions.get( team_label ).add( team_spawn_position );
+   }
+   
+   /*——————————————————————————————————————————————————————————————————————————*/
+@@ -402,6 +301,61 @@ class MiraMapModel
+   
+   /*——————————————————————————————————————————————————————————————————————————*/
+   
++  /**
++   * allows the three given building rules to be toggled.
++   */
++  protected
++  void building_rules(
++    boolean allow_block_break,
++    boolean allow_block_place,
++    boolean allow_block_explode
++                     )
++  {
++    this.allow_block_break = allow_block_break;
++    this.allow_block_place = allow_block_place;
++    this.allow_block_explode = allow_block_explode;
++  }
++  
++  /*——————————————————————————————————————————————————————————————————————————*/
++  
++  protected
++  void time_lock_time( long time_lock_time )
++  {
++    this.time_lock_time = time_lock_time;
++  }
++  
++  /*——————————————————————————————————————————————————————————————————————————*/
++  
++  protected
++  void maximum_build_height( short maximum_build_height )
++  {
++    this.maximum_build_height = maximum_build_height;
++  }
++  
++  /*——————————————————————————————————————————————————————————————————————————*/
++  
++  protected
++  void exclude_from_death_drops( @NotNull Material material )
++  {
++    this.excluded_death_drops.add( material );
++  }
++  
++  /*——————————————————————————————————————————————————————————————————————————*/
++  
++  public
++  short match_duration( int matchDuration )
++  {
++    return this.match_duration;
++  }
++  
++  protected
++  void match_duration( short match_duration )
++  {
++    this.match_duration = match_duration;
++  }
++  
++  /*——————————————————————————————————————————————————————————————————————————*/
++  
+   /**
+    * @return true - if this map is within an active match.
+    */
+@@ -471,7 +425,7 @@ class MiraMapModel
+   {
+     for ( ItemStack drop : event.getDrops( ) )
+     {
+-      if ( Arrays.asList( disabled_drops ).contains( drop.getType( ) ) )
++      if ( excluded_death_drops.contains( drop.getType( ) ) )
+       {
+         drop.setType( Material.AIR );
+       }
+diff --git a/src/main/java/sbs/mira/pvp/model/map/MiraMapModelConcrete.java b/src/main/java/sbs/mira/pvp/model/map/MiraMapModelConcrete.java
+index a3a7567..99cab59 100644
+--- a/src/main/java/sbs/mira/pvp/model/map/MiraMapModelConcrete.java
++++ b/src/main/java/sbs/mira/pvp/model/map/MiraMapModelConcrete.java
+@@ -1,10 +1,9 @@
+-package sbs.mira.pvp.model;
++package sbs.mira.pvp.model.map;
+ 
+ import org.bukkit.ChatColor;
+ import org.bukkit.Location;
+ import org.bukkit.Material;
+ import org.bukkit.enchantments.Enchantment;
+-import org.bukkit.event.HandlerList;
+ import org.bukkit.event.block.Action;
+ import org.bukkit.event.player.PlayerEvent;
+ import org.bukkit.event.player.PlayerInteractEvent;
+@@ -16,6 +15,7 @@ import org.jetbrains.annotations.NotNull;
+ import sbs.mira.pvp.framework.game.WarMap;
+ import sbs.mira.pvp.framework.stored.Activatable;
+ import sbs.mira.pvp.framework.stored.SerializedLocation;
++import sbs.mira.pvp.model.match.MiraGameModeType;
+ 
+ import java.util.ArrayList;
+ import java.util.HashMap;
+@@ -199,10 +199,10 @@ class MiraMapModelConcrete
+    * @since 1.0
+    */
+   public @NotNull
+-  Location spectator_spawn_location( )
++  Location spectator_spawn_position( )
+   {
+     // Convert the serialized location to a Spigot location.
+-    return spectator_spawn_location.toLocation( main.match( ).getCurrentWorld( ), true );
++    return spectator_spawn_position.toLocation( main.match( ).getCurrentWorld( ), true );
+   }
+   
+   /**
+@@ -217,6 +217,6 @@ class MiraMapModelConcrete
+   Location getSpectatorSpawn_( )
+   {
+     // Convert the serialized location to a Spigot location.
+-    return spectator_spawn_location.toLocation( ( ( MatchController ) main.match( ) ).getPreviousWorld( ), true );
++    return spectator_spawn_position.toLocation( ( ( MatchController ) main.match( ) ).getPreviousWorld( ), true );
+   }
+ }
+diff --git a/src/main/java/sbs/mira/pvp/model/map/MiraObjective.java b/src/main/java/sbs/mira/pvp/model/map/MiraObjective.java
+index 5847163..5bdf93f 100644
+--- a/src/main/java/sbs/mira/pvp/model/map/MiraObjective.java
++++ b/src/main/java/sbs/mira/pvp/model/map/MiraObjective.java
+@@ -1,4 +1,17 @@
+-package sbs.mira.pvp.model;
++package sbs.mira.pvp.model.map;
+ 
+-public interface MiraVerseObjective {
++import org.bukkit.World;
++import org.jetbrains.annotations.NotNull;
++
++public
++interface MiraObjective
++{
++  /**
++   * activation must cause the objective to become active.
++   * observation was the only thing permitted previously.
++   * interaction with the objective should now be enabled.
++   */
++  void activate( @NotNull World world );
++  
++  void deactivate( );
+ }
+diff --git a/src/main/java/sbs/mira/pvp/model/map/MiraTeamModel.java b/src/main/java/sbs/mira/pvp/model/map/MiraTeamModel.java
+index 047398a..742f1d1 100644
+--- a/src/main/java/sbs/mira/pvp/model/map/MiraTeamModel.java
++++ b/src/main/java/sbs/mira/pvp/model/map/MiraTeamModel.java
+@@ -1,7 +1,9 @@
+-package sbs.mira.pvp.model;
++package sbs.mira.pvp.model.map;
+ 
+ import org.bukkit.ChatColor;
++import org.bukkit.scoreboard.Team;
+ import org.jetbrains.annotations.NotNull;
++import org.jetbrains.annotations.Nullable;
+ 
+ 
+ /**
+@@ -17,16 +19,22 @@ public final
+ class MiraTeamModel
+ {
+   private final @NotNull String label;
+-  private final char colour;
+-  private final int maximum_size;
+   private final @NotNull String display_name;
+-  private org.bukkit.scoreboard.Team bukkit_team;
++  private final @NotNull ChatColor colour;
++  private final int maximum_size;
++  
++  private @Nullable Team bukkit_team;
+   
+   private int kills;
+   private int deaths;
+   
+-  private
+-  MiraTeamModel( @NotNull String label, char colour, int maximum_size, @NotNull String display_name )
++  public
++  MiraTeamModel(
++    @NotNull String label,
++    @NotNull String display_name,
++    @NotNull ChatColor colour,
++    int maximum_size
++               )
+   {
+     this.label = label;
+     this.colour = colour;
+@@ -39,22 +47,22 @@ class MiraTeamModel
+   
+   
+   public
+-  MiraTeamModel( @NotNull String label, char colour, String display_name )
++  MiraTeamModel( @NotNull String label, ChatColor colour, String display_name )
+   {
+-    this( label, colour, -1, display_name );
++    this( label, display_name, colour, -1 );
+   }
+   
+   
+   public
+-  MiraTeamModel( @NotNull String label, char colour, int maximum_size )
++  MiraTeamModel( @NotNull String label, ChatColor colour, int maximum_size )
+   {
+-    this( label, colour, maximum_size, label );
++    this( label, label, colour, maximum_size );
+   }
+   
+   public
+-  MiraTeamModel( @NotNull String label, char colour )
++  MiraTeamModel( @NotNull String label, ChatColor colour )
+   {
+-    this( label, colour, -1, label );
++    this( label, label, colour, -1 );
+   }
+   
+   /**
+@@ -72,7 +80,7 @@ class MiraTeamModel
+   public
+   ChatColor colour( )
+   {
+-    return ChatColor.getByChar( colour );
++    return this.colour;
+   }
+   
+   /**
+@@ -99,6 +107,8 @@ class MiraTeamModel
+   public @NotNull
+   org.bukkit.scoreboard.Team bukkit_team( )
+   {
++    assert bukkit_team != null;
++    
+     return bukkit_team;
+   }
+   
+@@ -115,7 +125,7 @@ class MiraTeamModel
+    */
+   boolean full( )
+   {
+-    return bukkit_team.getEntries( ).size( ) >= maximum_size;
++    return this.bukkit_team( ).getEntries( ).size( ) >= maximum_size;
+   }
+   
+   /*public
+diff --git a/src/main/java/sbs/mira/pvp/model/map/objective/MiraBlockObjective.java b/src/main/java/sbs/mira/pvp/model/map/objective/MiraBlockObjective.java
+index 96bae46..bafa5fc 100644
+--- a/src/main/java/sbs/mira/pvp/model/map/objective/MiraBlockObjective.java
++++ b/src/main/java/sbs/mira/pvp/model/map/objective/MiraBlockObjective.java
+@@ -1,4 +1,33 @@
+ package sbs.mira.pvp.model.map.objective;
+ 
+-public interface MiraBlockObjective {
++import org.bukkit.Location;
++import org.bukkit.Material;
++import org.bukkit.World;
++import org.bukkit.block.Block;
++import org.jetbrains.annotations.NotNull;
++import sbs.mira.core.model.Position;
++import sbs.mira.pvp.model.map.MiraObjective;
++
++
++public
++interface MiraBlockObjective
++  extends MiraObjective
++{
++  @NotNull
++  Material material( );
++  
++  @NotNull
++  Position position( );
++  
++  default @NotNull
++  Location location( @NotNull World world )
++  {
++    return this.position( ).location( world, true );
++  }
++  
++  default @NotNull
++  Block block( @NotNull World world )
++  {
++    return this.location( world ).getBlock( );
++  }
+ }
+diff --git a/src/main/java/sbs/mira/pvp/model/map/objective/MiraCaptureObjective.java b/src/main/java/sbs/mira/pvp/model/map/objective/MiraCaptureObjective.java
+index 66cccb7..6797165 100644
+--- a/src/main/java/sbs/mira/pvp/model/map/objective/MiraCaptureObjective.java
++++ b/src/main/java/sbs/mira/pvp/model/map/objective/MiraCaptureObjective.java
+@@ -1,4 +1,8 @@
+ package sbs.mira.pvp.model.map.objective;
+ 
+-public interface MiraCaptureBlockObjective {
++public
++interface MiraCaptureObjective
++  extends MiraBlockObjective
++{
++
+ }
+diff --git a/src/main/java/sbs/mira/pvp/model/map/objective/MiraFlagObjective.java b/src/main/java/sbs/mira/pvp/model/map/objective/MiraFlagObjective.java
+index 8984e28..3e1722d 100644
+--- a/src/main/java/sbs/mira/pvp/model/map/objective/MiraFlagObjective.java
++++ b/src/main/java/sbs/mira/pvp/model/map/objective/MiraFlagObjective.java
+@@ -1,4 +1,62 @@
+ package sbs.mira.pvp.model.map.objective;
+ 
+-public class MiraFlagObjective {
++import org.bukkit.ChatColor;
++import org.bukkit.Material;
++import org.bukkit.World;
++import org.jetbrains.annotations.NotNull;
++import org.jetbrains.annotations.Nullable;
++import sbs.mira.core.model.Position;
++
++public
++class MiraFlagObjective
++  implements MiraCaptureObjective, MiraBlockObjective
++{
++  private final @NotNull Material flag_material;
++  private final @NotNull Position flag_position;
++  
++  private boolean active;
++  private @Nullable World world;
++  
++  public
++  MiraFlagObjective( @NotNull Material flag_material, @NotNull Position flag_position )
++  {
++    this.flag_material = flag_material;
++    this.flag_position = flag_position;
++  }
++  
++  @Override
++  public
++  void activate( @NotNull World world )
++  {
++  
++  }
++  
++  @Override
++  public
++  void deactivate( )
++  {
++    assert this.world != null;
++    this.block( this.world ).setType( Material.BEDROCK );
++  }
++  
++  @Override
++  public @NotNull
++  Material material( )
++  {
++    return this.flag_material;
++  }
++  
++  @Override
++  public @NotNull
++  Position position( )
++  {
++    return this.flag_position;
++  }
++  
++  @Override
++  public
++  ChatColor colour( )
++  {
++    return null;
++  }
+ }
+diff --git a/src/main/java/sbs/mira/pvp/model/match/MiraGameModeModel.java b/src/main/java/sbs/mira/pvp/model/match/MiraGameModeModel.java
+index 0aed2c8..883f859 100644
+--- a/src/main/java/sbs/mira/pvp/model/match/MiraGameModeModel.java
++++ b/src/main/java/sbs/mira/pvp/model/match/MiraGameModeModel.java
+@@ -1,4 +1,4 @@
+-package sbs.mira.pvp.model;
++package sbs.mira.pvp.model.match;
+ 
+ import net.md_5.bungee.api.chat.TextComponent;
+ import org.bukkit.Bukkit;
+@@ -23,6 +23,8 @@ import sbs.mira.core.utility.MiraStringUtility;
+ import sbs.mira.pvp.MiraVersePlayer;
+ import sbs.mira.pvp.MiraVersePulse;
+ import sbs.mira.pvp.event.match.*;
++import sbs.mira.pvp.model.map.MiraTeamModel;
++import sbs.mira.pvp.model.map.MiraMapModel;
+ 
+ import java.util.*;
+ 
+@@ -223,7 +225,7 @@ class MiraGameModeModel
+     ).toLocation(main.match( ).getCurrentWorld( ), true ) );
+     */
+     
+-    this.map( ).applyInv( mira_player );
++    this.map( ).apply_inventory( mira_player );
+     // fixme: mira_player.game_mode(...)!
+     event.getPlayer( ).setGameMode( GameMode.SURVIVAL );
+   }
+@@ -249,7 +251,7 @@ class MiraGameModeModel
+     ).toLocation(main.match( ).getCurrentWorld( ), true ) );
+     */
+     
+-    this.map( ).applyInv( mira_player );
++    this.map( ).apply_inventory( mira_player );
+     // fixme: mira_player.game_mode(...)!
+     event.getPlayer( ).setGameMode( GameMode.SURVIVAL );
+   }
+@@ -293,7 +295,7 @@ class MiraGameModeModel
+         main.match( ).getCurrentWorld( ),
+         true ) );*/
+     
+-    this.map( ).applyInv( mira_player );
++    this.map( ).apply_inventory( mira_player );
+     
+     Player bukkit_player = mira_player.crafter( );
+     bukkit_player.setGameMode( GameMode.SURVIVAL );
+@@ -419,7 +421,7 @@ class MiraGameModeModel
+     
+     Player bukkit_player = mira_player.crafter( );
+     
+-    bukkit_player.teleport( map( ).spectator_spawn_location( ) );
++    bukkit_player.teleport( map( ).spectator_spawn_position( ) );
+     bukkit_player.setGameMode( GameMode.CREATIVE );
+     
+     mira_team.bukkit_team( ).removeEntry( mira_player.name( ) );
+diff --git a/src/main/java/sbs/mira/pvp/model/match/MiraGameModeType.java b/src/main/java/sbs/mira/pvp/model/match/MiraGameModeType.java
+index 5dc3735..60fc149 100644
+--- a/src/main/java/sbs/mira/pvp/model/match/MiraGameModeType.java
++++ b/src/main/java/sbs/mira/pvp/model/match/MiraGameModeType.java
+@@ -1,4 +1,4 @@
+-package sbs.mira.pvp.model;
++package sbs.mira.pvp.model.match;
+ 
+ 
+ /**
+diff --git a/src/main/java/sbs/mira/pvp/model/match/MiraMatchModel.java b/src/main/java/sbs/mira/pvp/model/match/MiraMatchModel.java
+index cdb50e5..b1f00d4 100644
+--- a/src/main/java/sbs/mira/pvp/model/match/MiraMatchModel.java
++++ b/src/main/java/sbs/mira/pvp/model/match/MiraMatchModel.java
+@@ -1,4 +1,4 @@
+-package sbs.mira.pvp.model;
++package sbs.mira.pvp.model.match;
+ 
+ import org.bukkit.*;
+ import org.bukkit.craftbukkit.v1_21_R6.entity.CraftPlayer;
+@@ -15,6 +15,8 @@ import sbs.mira.core.model.MiraConfigurationModel;
+ import sbs.mira.core.utility.MiraStringUtility;
+ import sbs.mira.pvp.MiraVersePlayer;
+ import sbs.mira.pvp.MiraVersePulse;
++import sbs.mira.pvp.model.MiraLobbyModel;
++import sbs.mira.pvp.model.map.MiraMapModelConcrete;
+ 
+ import java.io.IOException;
+ import java.util.*;
+@@ -116,17 +118,19 @@ class MiraMatchModel
+   public @NotNull
+   MiraMatchState state( )
+   {
+-    return state;
++    return this.state;
+   }
+   
+   /**
+    * @return the game mode that was voted in for this match - otherwise null if
+    * this has not yet occurred.
+    */
+-  public @Nullable
++  public @NotNull
+   MiraGameModeModel game_mode( )
+   {
+-    return game_mode;
++    assert this.game_mode != null;
++    
++    return this.game_mode;
+   }
+   
+   /*—[match lifecycle steps]——————————————————————————————————————————————————*/
+@@ -187,7 +191,7 @@ class MiraMatchModel
+     for ( MiraVersePlayer player : this.pulse( ).model( ).players( ).values( ) )
+     {
+       //player.update( );
+-      player.crafter( ).teleport( this.map.spectator_spawn_location( ) );
++      player.crafter( ).teleport( this.map.spectator_spawn_position( ) );
+     }
+     
+     this.begin_vote( );
+diff --git a/src/main/java/sbs/mira/pvp/model/match/MiraMatchState.java b/src/main/java/sbs/mira/pvp/model/match/MiraMatchState.java
+index 7c35dfe..bd48fde 100644
+--- a/src/main/java/sbs/mira/pvp/model/match/MiraMatchState.java
++++ b/src/main/java/sbs/mira/pvp/model/match/MiraMatchState.java
+@@ -1,4 +1,4 @@
+-package sbs.mira.pvp.model;
++package sbs.mira.pvp.model.match;
+ 
+ /**
+  * This enumerated type ensures accuracy & readability when
+diff --git a/src/main/java/sbs/mira/pvp/stats/WarStats.java b/src/main/java/sbs/mira/pvp/stats/WarStats.java
+index f3c7e09..b72b0fc 100644
+--- a/src/main/java/sbs/mira/pvp/stats/WarStats.java
++++ b/src/main/java/sbs/mira/pvp/stats/WarStats.java
+@@ -1,6 +1,6 @@
+ package sbs.mira.pvp.stats;
+ 
+-import sbs.mira.pvp.MiraPvpMaster;
++import sbs.mira.pvp.MiraVerseModel;
+ import sbs.mira.pvp.framework.MiraPlayer;
+ 
+ import java.sql.PreparedStatement;
+@@ -15,7 +15,7 @@ import java.util.UUID;
+  */
+ public class WarStats {
+ 
+-    private final MiraPvpMaster main;
++    private final MiraVerseModel main;
+     private final UUID owner;
+ 
+     private int kills, deaths, highestStreak, currentStreak, matchesPlayed, revives;
+@@ -30,7 +30,7 @@ public class WarStats {
+      * @param matchesWon    Current killstreak.
+      * @param revives       Amount of revives remaining.
+      */
+-    public WarStats(MiraPvpMaster main, UUID owner, int kills, int deaths, int highestStreak, int matchesWon, int revives) {
++    public WarStats( MiraVerseModel main, UUID owner, int kills, int deaths, int highestStreak, int matchesWon, int revives ) {
+         this.main = main;
+         this.owner = owner;
+         this.kills = kills;
+@@ -46,7 +46,7 @@ public class WarStats {
+      *
+      * @param owner Owner of this stats record.
+      */
+-    public WarStats(MiraPvpMaster main, UUID owner) {
++    public WarStats( MiraVerseModel main, UUID owner ) {
+         this.main = main;
+         this.owner = owner;
+         this.kills = 0;
+@@ -136,9 +136,9 @@ public class WarStats {
+      */
+     private void updateQuery(String query) {
+         String toExecute = "UPDATE `WarStats` SET " + query + " WHERE `player_uuid`='" + owner + "'";
+-        main.query().addQuery(() -> {
++        main.db().addQuery( () -> {
+             try {
+-                PreparedStatement execute = main.query().prepare(toExecute);
++                PreparedStatement execute = main.db().prepare( toExecute);
+                 execute.executeUpdate();
+                 execute.close();
+             } catch (SQLException e) {
+diff --git a/src/main/java/sbs/mira/pvp/util/Cache.java b/src/main/java/sbs/mira/pvp/util/Cache.java
+deleted file mode 100644
+index 170531f..0000000
+--- a/src/main/java/sbs/mira/pvp/util/Cache.java
++++ /dev/null
+@@ -1,131 +0,0 @@
+-package sbs.mira.pvp.util;
+-
+-import sbs.mira.pvp.MiraPvpMaster;
+-import sbs.mira.pvp.framework.util.WarCache;
+-import sbs.mira.pvp.framework.MiraPulse;
+-import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.game.Map;
+-import au.edu.swin.war.game.modes.*;
+-import au.edu.swin.war.maps.*;
+-import sbs.mira.pvp.game.modes.*;
+-import sbs.mira.pvp.maps.*;
+-
+-/**
+- * An extension to WarCache.
+- * Acts as a cache for all maps/gamemodes.
+- *
+- * @author s101601828 @ Swin.
+- * @version 1.0
+- * @see MiraPulse
+- * <p>
+- * Created by Josh on 20/04/2017.
+- * @since 1.0
+- */
+-public class Cache extends WarCache {
+-
+-    /**
+-     * Constructor of the extended Cache.
+-     * Everything that should be done is
+-     * done in the WarCache constructor.
+-     *
+-     * @param main The supercontroller.
+-     */
+-    Cache(MiraPvpMaster main) {
+-        super(main);
+-    }
+-
+-    @Override
+-    public void loadGamemodes() {
+-        // Hard-load gamemodes via class reference.
+-        // Reflections isn't really needed since it's a War-only thing.
+-        loadGamemode(TDM.class);
+-        loadGamemode(KoTH.class);
+-        loadGamemode(CTF.class);
+-        loadGamemode(LMS.class);
+-        loadGamemode(FFA.class);
+-        loadGamemode(DDM.class);
+-        loadGamemode(DTM.class);
+-        loadGamemode(LTS.class);
+-        loadGamemode(LP.class);
+-    }
+-
+-    @Override
+-    public void loadMaps() {
+-        // Hard-load maps via class reference.
+-        //TODO: Use Reflections or an external *shaded* module
+-        loadMap(Squared.class);
+-        loadMap(ClashOfClay.class);
+-        loadMap(Xenon.class);
+-        loadMap(Mutiny.class);
+-        loadMap(ConvenienceWars.class);
+-        loadMap(MaplebankWoods.class);
+-        loadMap(SanguineShores.class);
+-        loadMap(TheRebellion.class);
+-        loadMap(FairwickVillage.class);
+-        loadMap(ExoticPastures.class);
+-        loadMap(GibsonDesertWars.class);
+-        loadMap(BattleRoyale.class);
+-        loadMap(Roseley.class);
+-        loadMap(Battlement.class);
+-        loadMap(SanguineShoresII.class);
+-    }
+-
+-    /**
+-     * Instantiates a map class and initialises it.
+-     * Also puts into the map key/value set.
+-     *
+-     * @param toLoad The map to load.
+-     */
+-    private void loadMap(Class<? extends Map> toLoad) {
+-        try {
+-            // Load this class as if it were a Map.
+-            Map result = toLoad.newInstance(); // Initialise it.
+-            result.init(mira()); // Call init() before anything else!
+-            maps.put(result.getMapName(), result); // Register it in the maps key/value set.
+-            mira().plugin().log("Map initialised and stored: " + result.getMapName()); // Log it?
+-        } catch (InstantiationException | IllegalAccessException e) {
+-            e.printStackTrace();
+-        }
+-    }
+-
+-    /**
+-     * Instantiates a gamemode class and initialises it.
+-     * Also puts into the gamemode key/value set.
+-     *
+-     * @param toLoad The gamemode to load.
+-     */
+-    private void loadGamemode(Class<? extends Gamemode> toLoad) {
+-        try {
+-            // Load this class as if it were a Gamemode.
+-            Gamemode result = toLoad.newInstance(); // Initialise it.
+-            result.init(mira()); // Call init() before anything else!
+-            gamemodes.put(result.getFullName(), result); // Register it in the key/value set.
+-        } catch (InstantiationException | IllegalAccessException e) {
+-            e.printStackTrace();
+-        }
+-    }
+-
+-    /**
+-     * Finds a gamemode based on a case insensitive
+-     * or incomplete word.
+-     * <p>
+-     * For example: ['KoTH']
+-     * <p>
+-     * Input of 'KOTH' or 'koth' or 'k' -> 'KoTH'
+-     *
+-     * @param preference The map to try and find.
+-     * @return The map found, if any.
+-     */
+-    public Gamemode.Mode matchMode(String preference) {
+-        Gamemode.Mode found = null;
+-        if (preference == null) return null;
+-        for (Gamemode.Mode mode : ((Map) getCurrentMap()).getGamemodes()) {
+-            if (mode.getActualShortName().toLowerCase().startsWith(preference.toLowerCase())) {
+-                found = mode;
+-                break;
+-            }
+-        }
+-        return found;
+-    }
+-
+-}
+diff --git a/src/main/java/sbs/mira/pvp/util/Guard.java b/src/main/java/sbs/mira/pvp/util/Guard.java
+index 6221221..6ac351a 100644
+--- a/src/main/java/sbs/mira/pvp/util/Guard.java
++++ b/src/main/java/sbs/mira/pvp/util/Guard.java
+@@ -1,6 +1,6 @@
+ package sbs.mira.pvp.util;
+ 
+-import sbs.mira.pvp.MiraPvpMaster;
++import sbs.mira.pvp.MiraVerseModel;
+ import sbs.mira.pvp.framework.MiraPlayer;
+ import sbs.mira.pvp.framework.MiraPulse;
+ import sbs.mira.pvp.framework.util.WarMatch;
+@@ -132,12 +132,12 @@ public class Guard extends MiraModule implements Listener {
+             if (event.getPlayer().getItemInHand().getType() == Material.WRITTEN_BOOK)
+                 openBook(event.getPlayer());
+         }
+-        if (event.getPlayer().getItemInHand().equals(((MiraPvpMaster) mira()).SKYBLOCK)) {
++        if (event.getPlayer().getItemInHand().equals((( MiraVerseModel ) mira( )).SKYBLOCK )) {
+             ByteArrayDataOutput out = ByteStreams.newDataOutput();
+             out.writeUTF("Connect");
+             out.writeUTF("skyblock");
+             event.getPlayer().sendPluginMessage(mira().plugin(), "BungeeCord", out.toByteArray());
+-        } else if (event.getPlayer().getItemInHand().equals(((MiraPvpMaster) mira()).VOTE)) {
++        } else if (event.getPlayer().getItemInHand().equals((( MiraVerseModel ) mira( )).VOTE )) {
+             TextComponent cmp = new TextComponent("   \n    " + ChatColor.GREEN + "[Voting Link 1]");
+             cmp.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ComponentBuilder("**click me**").create()));
+             cmp.setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, "http://bit.ly/2CC6zF4"));
+diff --git a/src/main/java/sbs/mira/pvp/util/Match.java b/src/main/java/sbs/mira/pvp/util/Match.java
+deleted file mode 100644
+index 712af17..0000000
+--- a/src/main/java/sbs/mira/pvp/util/Match.java
++++ /dev/null
+@@ -1,394 +0,0 @@
+-package sbs.mira.pvp.util;
+-
+-import sbs.mira.pvp.MiraPvpMaster;
+-import sbs.mira.pvp.framework.MiraPlayer;
+-import sbs.mira.pvp.framework.game.WarMap;
+-import sbs.mira.pvp.framework.util.WarMatch;
+-import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.game.Map;
+-import org.bukkit.*;
+-import org.bukkit.entity.Player;
+-import org.bukkit.scheduler.BukkitRunnable;
+-import org.bukkit.scoreboard.DisplaySlot;
+-import org.bukkit.scoreboard.Objective;
+-import org.bukkit.scoreboard.Scoreboard;
+-import org.bukkit.scoreboard.Team;
+-
+-import java.util.ArrayList;
+-import java.util.HashMap;
+-import java.util.Random;
+-import java.util.UUID;
+-
+-/**
+- * An extension to WarMatch.
+- * Acts as the mediator of match flow.
+- *
+- * @author s101601828 @ Swin.
+- * @version 1.0
+- * @see WarMatch
+- * <p>
+- * Created by Josh on 20/04/2017.
+- * @since 1.0
+- */
+-public class Match extends WarMatch {
+-
+-    private final HashMap<Gamemode.Mode, Integer> votes; // Holds a key/value pair for a gamemode and the number of votes it has.
+-    private final ArrayList<UUID> voted; // Players who have voted during a vote.
+-    private Scoreboard gScore; // A global, temporary scoreboard which is kept during the STARTING state.
+-    private long previousID; // Holds the world identifier of the previous match world.
+-    private Gamemode.Mode winningVote; // Holds the winning vote during a vote.
+-
+-    private String setNext; // Holds if a map has been set next.
+-    private boolean wasSet; // True if the match playing was set.
+-
+-    private final int voteTime; // Holds how long votes go for;
+-    private final int cycleTime; // Holds how long cycles go for;
+-    private final int startTime; // Holds how long startups go for;
+-
+-    /**
+-     * This constructor calls the constructor of WarMatch.
+-     *
+-     * @param main Running instance of Manager.
+-     */
+-    Match(MiraPvpMaster main) {
+-        super(main);
+-        this.votes = new HashMap<>();
+-        this.voted = new ArrayList<>();
+-        this.previousID = 0; // Assign a default previous ID.
+-        this.gScore = main.plugin().getServer().getScoreboardManager().getNewScoreboard();
+-        this.voteTime = main.plugin().getConfig().getInt("settings.voteTime");
+-        this.cycleTime = main.plugin().getConfig().getInt("settings.cycleTime");
+-        this.startTime = main.plugin().getConfig().getInt("settings.startTime");
+-    }
+-
+-    /**
+-     * Quick function to return the running map
+-     * without making an external call to cache.
+-     * <p>
+-     * This also automatically casts the running
+-     * instance to Map, so all extra functionality
+-     * is available.
+-     *
+-     * @return Map instance.
+-     */
+-    private Map getRunningMap() {
+-        return (Map) mira().cache().getCurrentMap();
+-    }
+-
+-    /**
+-     * Returns the world of the map that was
+-     * previously played. This should be used
+-     * for late-vote joins.
+-     *
+-     * @return Previous world.
+-     */
+-    public World getPreviousWorld() {
+-        return Bukkit.getWorld(previousID + "");
+-    }
+-
+-    /**
+-     * This function returns the list of players
+-     * who have voted, by their UUID. This should
+-     * only be accessed during vote time to check
+-     * who has voted or not.
+-     *
+-     * @return The list of players who have voted.
+-     */
+-    public ArrayList<UUID> getVoted() {
+-        return voted;
+-    }
+-
+-    /**
+-     * This function returns the key/value set of
+-     * gamemodes and the amount of votes they have
+-     * received. This should only be accessed during
+-     * vote time to increment the amount of votes
+-     * for a player.
+-     * <p>
+-     * The rest is handled internally.
+-     *
+-     * @return The key/value set of gamemodes and their scores.
+-     */
+-    public HashMap<Gamemode.Mode, Integer> getVotes() {
+-        return votes;
+-    }
+-
+-    /**
+-     * This method forces a desired map to be played next.
+-     * Does not perform a null check, so be careful.
+-     *
+-     * @param mapToSet Map to set.
+-     */
+-    public void setNext(WarMap mapToSet) {
+-        setNext = mapToSet.getMapName();
+-    }
+-
+-    /**
+-     * Returns the name of the map that was set
+-     * to be played next, if any.
+-     *
+-     * @return Set next map name.
+-     */
+-    public String getSetNext() {
+-        return setNext;
+-    }
+-
+-    /**
+-     * Returns whether or not this map was set out of rotation.
+-     *
+-     * @return Was set?
+-     */
+-    public boolean wasSet() {
+-        return wasSet;
+-    }
+-
+-    /**
+-     * Returns an instance of the global scoreboard.
+-     * Is used to give to the player in case there is
+-     * no match running and a placeholder scoreboard
+-     * is used instead.
+-     *
+-     * @return The global scoreboard.
+-     */
+-    Scoreboard s() {
+-        return gScore;
+-    }
+-
+-    @Override
+-    public void endCycle() {
+-        new BukkitRunnable() {
+-            int timer = cycleTime;
+-
+-            public void run() {
+-                timer--;
+-                if (timer % 3 == 0) {
+-                    // Make cool particles appear as a celebration for a good match.
+-                    if (getCurrentWorld().getPlayers().size() > 0) { // If there's people online...
+-                        // Spawn particles around a random player 8 times every 3 seconds.
+-                        int count2 = 8;
+-                        if (count2 > Bukkit.getOnlinePlayers().size()) count2 = Bukkit.getOnlinePlayers().size();
+-                        while (count2 > 0) {
+-                            ((MiraPvpMaster) mira()).entity().spawnFirework(getCurrentWorld().getPlayers().get(
+-                                    new Random().nextInt(getCurrentWorld().getPlayers().size())).getLocation());
+-                            // Spawn a random firework at 8 people's locations.
+-                            // If there is less than 8 people online, then the amount of people online instead.
+-                            count2--;
+-                        }
+-                    }
+-                }
+-                if (timer == 0) {
+-                    // Move the rotation pointer to the next map.
+-                    if (setNext == null) {
+-                        if (rotationPoint == getRotationList().size() - 1) rotationPoint = 0;
+-                        else rotationPoint++;
+-                    }
+-                    wasSet = false;
+-
+-                    // Back to the voting stage!
+-                    this.cancel();
+-                    preMatch();
+-                }
+-            }
+-        }.runTaskTimer(mira().plugin(), 0L, 20L);
+-    }
+-
+-    /**
+-     * The first match must be run differently
+-     * to the rest of the matches. Some key values
+-     * have not been set until a full match has
+-     * have not been set until a full match has
+-     * been played.
+-     * <p>
+-     * The vote is skipped and the match starts.
+-     */
+-    public void firstMatch() {
+-        setStatus(Status.VOTING); // Change match cycle state.
+-        setCurrentMap(getRotationList().get(rotationPoint)); // Get the next map on the rotation.
+-        setRoundID(mira().strings().generateID()); // Generates a new match world ID..
+-        votes.put(getRunningMap().getGamemodes()[0], 1); // Give the map's first preferred gamemode 1 vote on startup.
+-        continuePreMatch(); // Continue the pre-match cycle once the time is up.
+-        gScore.registerNewTeam("PostSpectators").setPrefix(ChatColor.LIGHT_PURPLE + ""); // Create a post-spectator scoreboard team.
+-    }
+-
+-    @Override
+-    public void preMatch() {
+-        setStatus(Status.VOTING); // Change match cycle state.
+-        previousID = getRawRoundID(); // Archive reference for the match world ID.
+-        setPreviousMap(getCurrentMap()); // Set the previous map's identifier.
+-
+-        if (setNext == null)
+-            setCurrentMap(getRotationList().get(rotationPoint)); // Get the next map on the rotation.
+-        else {
+-            setCurrentMap(setNext);
+-            wasSet = true;
+-            setNext = null;
+-        }
+-
+-        setRoundID(mira().strings().generateID()); // Generates a new match world ID..
+-        for (Gamemode.Mode mode : getRunningMap().getGamemodes()) // Give the votable modes a default score of zero.
+-            votes.put(mode, 0);
+-        new BukkitRunnable() {
+-            int time = voteTime; // Timer starts at 26.
+-
+-            public void run() {
+-                if (time == voteTime) {
+-                    Bukkit.broadcastMessage(mira().message("votes.starting"));
+-                    for (MiraPlayer online : mira().getWarPlayers().values())
+-                        online.crafter().spigot().sendMessage(Gamemode.Mode.format(getRunningMap().getGamemodes(), mira()));
+-                } else if (time == 0) {
+-                    this.cancel();
+-                    continuePreMatch(); // Continue the pre-match cycle once the time is up.
+-                }
+-                time--;
+-            }
+-        }.runTaskTimer(mira().plugin(), 0L, 20L);
+-    }
+-
+-    /**
+-     * Runs the rest of the pre-match logic.
+-     * Once a gamemode has been decided, the
+-     * next map can be loaded and the countdown
+-     * will begin.
+-     * <p>
+-     * This is not a WarMatch method, therefore is has
+-     * private access since it is a continuation.
+-     */
+-    private void continuePreMatch() {
+-        // Calculate the winning vote.
+-        int highest = -1; // No gamemode has the highest value to begin.
+-        for (java.util.Map.Entry<Gamemode.Mode, Integer> entry : votes.entrySet()) {
+-            if (entry.getValue() > highest) { // Is this the new highest voted gamemode?
+-                highest = entry.getValue();  // Record this as the highest amount of votes.
+-                winningVote = entry.getKey(); // Change the winning vote to this gamemode.
+-            }
+-        }
+-
+-        // Announce, set and clean vote results.
+-        votes.clear();
+-        voted.clear();
+-        setCurrentMode(mira().cache().getGamemode(winningVote.getFullName()));
+-
+-        Bukkit.broadcastMessage(mira().message("votes.next", getCurrentMode().getGrammar(), getCurrentMode().getName(), getCurrentMap()));
+-
+-        // Set the state to starting and perform starting logic.
+-        mira().world().loadMap(getCurrentMap(), getRawRoundID());
+-        setStatus(Status.STARTING);
+-
+-        // Pre-round attribute assignment
+-        if (mira().cache().getCurrentMap().attr().containsKey("timeLock")) {
+-            World world = getCurrentWorld();
+-            world.setGameRuleValue("doDaylightCycle", "false");
+-            world.setFullTime((Long) mira().cache().getCurrentMap().attr().get("timeLockTime"));
+-        }
+-
+-        // Teleport all online WarPlayers into the map.
+-        for (MiraPlayer online : mira().getWarPlayers().values()) {
+-            online.update();
+-            online.crafter().teleport(getRunningMap().getSpectatorSpawn());
+-        }
+-
+-        // Completely eliminate all traces of the previous match world.
+-        mira().world().restoreMap(previousID + "");
+-
+-        // Create a temporary scoreboard for everyone.
+-        gScore = Bukkit.getScoreboardManager().getNewScoreboard();
+-        org.bukkit.scoreboard.Team temp = gScore.registerNewTeam("Waiting");
+-        temp.setCanSeeFriendlyInvisibles(true);
+-        temp.setAllowFriendlyFire(false);
+-        temp.setPrefix(ChatColor.LIGHT_PURPLE + "");
+-
+-        // Add everyone to this new scoreboard.
+-        for (MiraPlayer pl : mira().getWarPlayers().values())
+-            temp.addEntry(pl.crafter().getName());
+-
+-        // Create a scoreboard objective, which actually puts data on the scoreboard.
+-        final Objective obj = gScore.registerNewObjective("vote", "dummy");
+-        String dp = (getCurrentMap() + " (" + winningVote.toString() + ")"); // Display the next map and gamemode.
+-        if (dp.length() > 32) dp = dp.substring(0, 32); // If the string is longer than 32 characters, substring it.
+-        obj.setDisplayName(dp);
+-        obj.setDisplaySlot(DisplaySlot.SIDEBAR); // Display it on the player's sidebar.
+-        new BukkitRunnable() {
+-            int time = startTime; // Wait some more time!
+-
+-            public void run() {
+-                if (Bukkit.getOnlinePlayers().size() > 0)
+-                    time--;
+-                for (Player online : Bukkit.getOnlinePlayers())
+-                    online.setScoreboard(gScore);
+-                if (time == 0) {
+-                    obj.setDisplaySlot(null);
+-                    matchStart(); // Start the match!
+-                    this.cancel();
+-                    return;
+-                }
+-
+-                // Format the objective to display pretty scores.
+-                obj.getScore("  ").setScore(3);
+-                gScore.resetScores("     " + (time + 1) + " second" + mira().strings().plural(time + 1));
+-                obj.getScore("     Starting in").setScore(2);
+-                obj.getScore("     " + time + " second" + mira().strings().plural(time)).setScore(1);
+-                obj.getScore(" ").setScore(0);
+-            }
+-        }.runTaskTimer(mira().plugin(), 0L, 20L);
+-    }
+-
+-    @Override
+-    public void matchStart() {
+-        setStatus(Status.PLAYING); // Set the match state to active!
+-        getRunningMap().activate(); // Let 'er loose!
+-    }
+-
+-    @Override
+-    public void matchEnd() {
+-        //TODO: Respawn dead players
+-        getRunningMap().deactivate();
+-        gScore = getCurrentMode().s();
+-
+-        // Assign another temporary scoreboard for the beginning of the match cycle.
+-        org.bukkit.scoreboard.Team temp;
+-        if (gScore.getTeam("PostSpectators") != null)
+-            temp = gScore.getTeam("PostSpectators");
+-        else temp = gScore.registerNewTeam("PostSpectators");
+-        temp.setCanSeeFriendlyInvisibles(true);
+-        temp.setAllowFriendlyFire(false);
+-        temp.setPrefix(ChatColor.LIGHT_PURPLE + "");
+-
+-        // Remove everyone from the current teams.
+-        for (Team team : gScore.getTeams())
+-            for (String entry : team.getEntries())
+-                team.removeEntry(entry);
+-
+-        // Add all online players to the post spectator team.
+-        for (MiraPlayer pl : mira().getWarPlayers().values()) {
+-            pl.crafter().setScoreboard(gScore); // Let them see this scoreboard too!
+-            temp.addEntry(pl.crafter().getName());
+-        }
+-
+-        startCycle(); // Start the cycle.
+-    }
+-
+-    @Override
+-    public void startCycle() {
+-        // Set the match state to cycling.
+-        setStatus(Status.CYCLE);
+-
+-        ((MiraPvpMaster) mira()).respawn().clear();
+-        // Fix everyone back up.
+-        for (MiraPlayer pl : mira().getWarPlayers().values()) {
+-            // Force respawn everyone using the Spigot entity API.
+-            if (pl.crafter().isDead())
+-                pl.crafter().spigot().respawn();
+-
+-            // Finalise match cycling for this player.
+-            pl.crafter().playSound(pl.crafter().getLocation(), Sound.ENTITY_WITHER_DEATH, 1L, 1L);
+-            pl.setCurrentTeam(null);
+-            pl.crafter().setGameMode(GameMode.CREATIVE);
+-            mira().items().clear(pl);
+-        }
+-        Bukkit.getScheduler().runTaskLater(mira().plugin(), () -> {
+-            for (MiraPlayer pl : mira().getWarPlayers().values())
+-                mira().giveSpectatorKit(pl);
+-        }, 1L);
+-        endCycle(); // Start the match cycle countdown.
+-    }
+-}
+diff --git a/src/main/java/sbs/mira/pvp/util/StatsListener.java b/src/main/java/sbs/mira/pvp/util/StatsListener.java
+index 950ceab..9864a71 100644
+--- a/src/main/java/sbs/mira/pvp/util/StatsListener.java
++++ b/src/main/java/sbs/mira/pvp/util/StatsListener.java
+@@ -1,14 +1,14 @@
+ package sbs.mira.pvp.util;
+ 
+-import sbs.mira.pvp.MiraPvpMaster;
+-import sbs.mira.pvp.MiraPvpPlayer;
++import sbs.mira.pvp.MiraVerseModel;
++import sbs.mira.pvp.MiraVersePlayer;
+ import sbs.mira.pvp.framework.MiraPlayer;
+ import sbs.mira.pvp.framework.event.MatchEndEvent;
+ import sbs.mira.pvp.framework.event.MatchPlayerDeathEvent;
+ import sbs.mira.pvp.framework.MiraPulse;
+ import sbs.mira.pvp.framework.util.WarMatch;
+ import sbs.mira.pvp.framework.MiraModule;
+-import sbs.mira.pvp.game.Map;
++import sbs.mira.pvp.model.map.MiraMapModelConcrete;
+ import sbs.mira.pvp.stats.WarStats;
+ import com.vexsoftware.votifier.model.VotifierEvent;
+ import org.bukkit.*;
+@@ -50,23 +50,24 @@ public class StatsListener extends MiraModule implements Listener {
+ 
+     @EventHandler
+     public void onServerList(ServerListPingEvent event) {
+-        Map map = (Map) mira().cache().getCurrentMap();
++        MiraMapModelConcrete map = ( MiraMapModelConcrete ) mira( ).cache( ).getCurrentMap( );
+         String state;
+         switch (mira().match().getStatus()) {
+             case CYCLE:
+-                state = map.getMapName() + GRAY + " (cycling)";
++                state = map.label( ) + GRAY + " (cycling)";
+                 break;
+             case VOTING:
+-                state = map.getMapName() + GRAY + " (in a vote)";
++                state = map.label( ) + GRAY + " (in a vote)";
+                 break;
+             case STARTING:
+                 if (Bukkit.getOnlinePlayers().size() > 0)
+-                    state = map.getMapName() + GRAY + " (starting)";
++                    state = map.label( ) + GRAY + " (starting)";
+                 else
+-                    state = map.getMapName() + GRAY + " (waiting for players)";
++                    state = map.label( ) + GRAY + " (waiting for players)";
+                 break;
+             case PLAYING:
+-                state = map.getMapName() + GRAY + " (" + mira().strings().getDigitalTime((int) (map.getMatchDuration() - mira().match().getCurrentMode().getTimeElapsed())) + ") (" + mira().match().getCurrentMode().getName() + ")";
++                state = map.label( ) + GRAY + " (" + mira( ).strings( ).getDigitalTime( (int) ( map.match_duration(
++                  900 ) - mira( ).match( ).getCurrentMode( ).getTimeElapsed( )) ) + ") (" + mira( ).match( ).getCurrentMode( ).getName( ) + ")";
+                 break;
+             default:
+                 state = RED + "Server is non-functional";
+@@ -88,19 +89,19 @@ public class StatsListener extends MiraModule implements Listener {
+         try {
+ 
+             // Checks if the player has stats recorded already.
+-            PreparedStatement stats = ((MiraPvpMaster) mira()).query().prepare("SELECT * FROM `WarStats` WHERE `player_uuid`=?");
++            PreparedStatement stats = (( MiraVerseModel ) mira( )).db( ).prepare( "SELECT * FROM `WarStats` WHERE `player_uuid`=?" );
+             stats.setString(1, event.getUniqueId().toString());
+             ResultSet check = stats.executeQuery(); // Execute the check and get our result.
+ 
+             if (check.next()) {
+                 mira().plugin().log(event.getName() + " had previous stats, retrieving...");
+-                ((MiraPvpMaster) mira()).putTempStats(event.getUniqueId(), new WarStats((MiraPvpMaster) mira(), event.getUniqueId(),
+-                        check.getInt("kills"), check.getInt("deaths"),
+-                        check.getInt("highestStreak"), check.getInt("matchesPlayed"),
+-                        check.getInt("revives")));
++                (( MiraVerseModel ) mira( )).putTempStats( event.getUniqueId( ), new WarStats( ( MiraVerseModel ) mira( ), event.getUniqueId( ),
++                                                                                               check.getInt("kills"), check.getInt("deaths"),
++                                                                                               check.getInt("highestStreak"), check.getInt("matchesPlayed"),
++                                                                                               check.getInt("revives")) );
+             } else {
+                 mira().plugin().log("Creating statistics record for " + event.getName());
+-                PreparedStatement newStats = ((MiraPvpMaster) mira()).query().prepare("INSERT INTO `WarStats` (`player_uuid`) VALUES (?)");
++                PreparedStatement newStats = (( MiraVerseModel ) mira( )).db( ).prepare( "INSERT INTO `WarStats` (`player_uuid`) VALUES (?)" );
+                 newStats.setString(1, event.getUniqueId().toString());
+                 newStats.executeUpdate(); // Execute our insertion query.
+                 newStats.close(); // Close the prepared statement.
+@@ -136,11 +137,11 @@ public class StatsListener extends MiraModule implements Listener {
+         if (status == WarMatch.Status.STARTING || status == WarMatch.Status.PLAYING || status == WarMatch.Status.CYCLE)
+             target.teleport(mira().cache().getCurrentMap().getSpectatorSpawn()); // Spawn them in the current defined map.
+         else if (status == WarMatch.Status.VOTING)
+-            target.teleport(((Map) mira().cache().getMap(mira().match().getPreviousMap())).getSpectatorSpawn_()); // Spawn them in the previous defined map.
++            target.teleport((( MiraMapModelConcrete ) mira( ).cache( ).getMap( mira( ).match( ).getPreviousMap( ) )).getSpectatorSpawn_( ) ); // Spawn them in the previous defined map.
+ 
+         if (status != WarMatch.Status.PLAYING) {
+-            event.getPlayer().setScoreboard(((Match) mira().match()).s()); // Show the default scoreboard.
+-            ((Match) mira().match()).s().getTeam("PostSpectators").addEntry(event.getPlayer().getName()); // Add them to this scoreboard.
++            event.getPlayer().setScoreboard((( MatchController ) mira().match()).s()); // Show the default scoreboard.
++            (( MatchController ) mira().match()).s().getTeam( "PostSpectators").addEntry( event.getPlayer().getName()); // Add them to this scoreboard.
+             //TODO: Add them as spectators???
+         } else
+             event.getPlayer().setScoreboard(mira().match().getCurrentMode().s()); // Show the gamemode's scoreboard.
+@@ -163,11 +164,11 @@ public class StatsListener extends MiraModule implements Listener {
+ 
+     @EventHandler
+     public void onDeath(MatchPlayerDeathEvent event) {
+-        WarStats dead = ((MiraPvpPlayer) event.getPlayer()).stats();
++        WarStats dead = (( MiraVersePlayer ) event.getPlayer( )).stats( );
+         dead.addDeath();
+ 
+         if (event.getKiller() != null) {
+-            WarStats killer = ((MiraPvpPlayer) event.getKiller()).stats();
++            WarStats killer = (( MiraVersePlayer ) event.getKiller( )).stats( );
+             killer.addKill();
+             Player target = event.getKiller().crafter();
+             if (killer.getCurrentStreak() % 5 == 0) {
+@@ -188,7 +189,7 @@ public class StatsListener extends MiraModule implements Listener {
+     public void onMatchEnd(MatchEndEvent event) {
+         for (MiraPlayer pl : mira().getWarPlayers().values())
+             if (pl.is_member_of_team())
+-                ((MiraPvpPlayer) pl).stats().addMatchPlayed();
++                (( MiraVersePlayer ) pl).stats( ).addMatchPlayed( );
+     }
+ 
+     /* Voting storage and rewards. */
+@@ -231,7 +232,7 @@ public class StatsListener extends MiraModule implements Listener {
+                 online.sendMessage(mira().message("votifier.self"));
+ 
+         // Spawn a congratulatory firework.
+-        ((MiraPvpMaster) mira()).entity().spawnFirework(target.getLocation());
+-        ((MiraPvpPlayer) mira().getWarPlayer(target)).stats().addRevive();
++        (( MiraVerseModel ) mira( )).entities( ).spawnFirework( target.getLocation( ) );
++        (( MiraVersePlayer ) mira( ).getWarPlayer( target )).stats( ).addRevive( );
+     }
+ }
+\ No newline at end of file
+diff --git a/src/main/java/sbs/mira/pvp/util/modules/CommandUtility.java b/src/main/java/sbs/mira/pvp/util/modules/CommandUtility.java
+index c1cebcd..65ae536 100644
+--- a/src/main/java/sbs/mira/pvp/util/modules/CommandUtility.java
++++ b/src/main/java/sbs/mira/pvp/util/modules/CommandUtility.java
+@@ -6,9 +6,8 @@ import sbs.mira.pvp.framework.game.WarTeam;
+ import sbs.mira.pvp.framework.util.WarMatch;
+ import sbs.mira.pvp.framework.MiraModule;
+ import sbs.mira.pvp.game.Gamemode;
+-import sbs.mira.pvp.util.Cache;
+-import sbs.mira.pvp.MiraPvpMaster;
+-import sbs.mira.pvp.util.Match;
++import sbs.mira.pvp.controller.Repository;
++import sbs.mira.pvp.MiraVerseModel;
+ import com.sk89q.minecraft.util.commands.*;
+ import net.md_5.bungee.api.chat.TextComponent;
+ import org.bukkit.Bukkit;
+@@ -29,7 +28,7 @@ import org.bukkit.entity.Player;
+ public class CommandUtility extends MiraModule {
+ 
+     @SuppressWarnings("unused") // This is used, just not directly.
+-    public CommandUtility(MiraPvpMaster main) {
++    public CommandUtility( MiraVerseModel main ) {
+         super(main);
+     }
+ 
+@@ -107,7 +106,7 @@ public class CommandUtility extends MiraModule {
+             sender.sendMessage("You will no longer automatically join the next round.");
+         else {
+             mira().match().getCurrentMode().entryHandle(wp); // If applicable, handle their entry.
+-            ((MiraPvpMaster) mira()).respawn().clearFor(wp); // Clear their respawning info if they have any.
++            (( MiraVerseModel ) mira( )).respawn( ).clearFor( wp ); // Clear their respawning info if they have any.
+         }
+     }
+ 
+@@ -127,7 +126,7 @@ public class CommandUtility extends MiraModule {
+     public void rotation(CommandContext args, CommandSender sender) {
+         int currentPos = mira().match().rotationPoint;
+         int nextPos = currentPos == mira().match().getRotationList().size() - 1 ? 0 : currentPos + 1;
+-        Match match = (Match) mira().match();
++        MatchController match = ( MatchController ) mira().match();
+ 
+         sender.sendMessage("Current rotation:");
+         for (int i = 0; i < mira().match().getRotationList().size(); i++) {
+@@ -285,7 +284,7 @@ public class CommandUtility extends MiraModule {
+             sender.sendMessage(ChatColor.RED + "Error: Unknown map.");
+             return;
+         }
+-        ((Match) mira().match()).setNext(found);
++        (( MatchController ) mira().match()).setNext( found);
+         Bukkit.broadcastMessage(sender.getName() + " has set the next map to be " + found.getMapName());
+     }
+ 
+@@ -304,14 +303,14 @@ public class CommandUtility extends MiraModule {
+             return;
+         }
+ 
+-        Match match = (Match) mira().match(); // Since this procedure contains non-WarMatch functions, use Match instead.
++        MatchController match = ( MatchController ) mira().match(); // Since this procedure contains non-WarMatch functions, use Match instead.
+         if (!rig && match.getVoted().contains(((Player) sender).getUniqueId())) {
+             // Do not allow a player to vote twice. Das cheating. Kindof like real elections.
+             sender.sendMessage("You have already voted!");
+             return;
+         }
+ 
+-        Gamemode.Mode selection = ((Cache) mira().cache()).matchMode(votingFor); // Match to the selected mode.
++        Gamemode.Mode selection = (( Repository ) mira().cache()).matchMode( votingFor); // Match to the selected mode.
+         if (selection != null) {
+             // Increment the votes for this gamemode by 1, or 1337 if rigging.
+             match.getVotes().put(selection, match.getVotes().get(selection) + (rig ? 1337 : 1));
+diff --git a/src/main/java/sbs/mira/pvp/util/modules/EntityUtility.java b/src/main/java/sbs/mira/pvp/util/modules/EntityUtility.java
+deleted file mode 100644
+index f2e227d..0000000
+--- a/src/main/java/sbs/mira/pvp/util/modules/EntityUtility.java
++++ /dev/null
+@@ -1,137 +0,0 @@
+-package sbs.mira.pvp.util.modules;
+-
+-
+-import sbs.mira.pvp.framework.MiraPulse;
+-import sbs.mira.pvp.framework.MiraModule;
+-import org.bukkit.ChatColor;
+-import org.bukkit.Color;
+-import org.bukkit.FireworkEffect;
+-import org.bukkit.Location;
+-import org.bukkit.entity.Entity;
+-import org.bukkit.entity.EntityType;
+-import org.bukkit.entity.Firework;
+-import org.bukkit.inventory.meta.FireworkMeta;
+-
+-import java.util.Random;
+-
+-/**
+- * This class handles all procedures or functions
+- * relating to Spigot entities, such as players,
+- * monsters, animals, etc.
+- * <p>
+- * Created by Josh on 23/04/2017.
+- *
+- * @author s101601828 @ Swin.
+- * @version 1.0
+- * @see Entity
+- * @since 1.0
+- */
+-public class EntityUtility extends MiraModule {
+-
+-    private final Random rng; // Provided random number generator.
+-
+-    /**
+-     * Entity utility constructor.
+-     * We need to link back to the manager and plugin.
+-     *
+-     * @param main The supercontroller.
+-     */
+-    public EntityUtility(MiraPulse main) {
+-        super(main);
+-        this.rng = new Random();
+-    }
+-
+-    /**
+-     * Spawns a firework with a random shape and random color.
+-     * This will spawn at the location specified. This procedure
+-     * should be called when necessary to pretty up things.
+-     *
+-     * @param l The location for the firework to be spawned at.
+-     */
+-    public void spawnFirework(Location l) {
+-        spawnFirework(l, ChatColor.values()[rng.nextInt(ChatColor.values().length)]);
+-    }
+-
+-    /**
+-     * Spawns a firework with a random shape, but defined color.
+-     * This will spawn at the location specified. This procedure
+-     * should be called when necessary to pretty up things.
+-     *
+-     * @param l     The location for the firework to be spawned at.
+-     * @param color The color of the firework.
+-     */
+-    @SuppressWarnings("UnusedAssignment")
+-    public void spawnFirework(Location l, ChatColor color) {
+-        Firework fw = (Firework) l.getWorld().spawnEntity(l, EntityType.FIREWORK);
+-        FireworkMeta fwm = fw.getFireworkMeta();
+-
+-        FireworkEffect.Type type;
+-        switch (rng.nextInt(5) + 1) {
+-            case 1:
+-                type = FireworkEffect.Type.BALL;
+-            case 2:
+-                type = FireworkEffect.Type.BALL_LARGE;
+-            case 3:
+-                type = FireworkEffect.Type.BURST;
+-            case 4:
+-                type = FireworkEffect.Type.STAR;
+-            case 5:
+-                type = FireworkEffect.Type.CREEPER;
+-            default:
+-                type = FireworkEffect.Type.STAR;
+-        }
+-        Color fade = getColor(rng.nextInt(17) + 1);
+-        fwm.addEffect(FireworkEffect.builder().flicker(rng.nextBoolean()).withColor(mira().strings().convertChatToDye(color)).withFade(fade).with(type).trail(rng.nextBoolean()).build());
+-        fwm.setPower(rng.nextInt(2) + 1);
+-        fw.setFireworkMeta(fwm);
+-    }
+-
+-    /**
+-     * Gets a random firework color from an integer.
+-     * Given a number from 1-17, a color is returned.
+-     * Used with spawnFirework().
+-     *
+-     * @param r The integer to case.
+-     * @return The resulting color.
+-     */
+-    private Color getColor(int r) {
+-        switch (r) {
+-            case 1:
+-                return Color.AQUA;
+-            case 2:
+-                return Color.BLACK;
+-            case 3:
+-                return Color.BLUE;
+-            case 4:
+-                return Color.FUCHSIA;
+-            case 5:
+-                return Color.GRAY;
+-            case 6:
+-                return Color.GREEN;
+-            case 7:
+-                return Color.LIME;
+-            case 8:
+-                return Color.MAROON;
+-            case 9:
+-                return Color.NAVY;
+-            case 10:
+-                return Color.OLIVE;
+-            case 11:
+-                return Color.ORANGE;
+-            case 12:
+-                return Color.PURPLE;
+-            case 13:
+-                return Color.RED;
+-            case 14:
+-                return Color.SILVER;
+-            case 15:
+-                return Color.TEAL;
+-            case 16:
+-                return Color.WHITE;
+-            case 17:
+-                return Color.YELLOW;
+-            default:
+-                return Color.WHITE;
+-        }
+-    }
+-}
+\ No newline at end of file
+diff --git a/src/main/java/sbs/mira/pvp/util/modules/QueryUtility.java b/src/main/java/sbs/mira/pvp/util/modules/QueryUtility.java
+deleted file mode 100644
+index 566d0ca..0000000
+--- a/src/main/java/sbs/mira/pvp/util/modules/QueryUtility.java
++++ /dev/null
+@@ -1,98 +0,0 @@
+-package sbs.mira.pvp.util.modules;
+-
+-import sbs.mira.pvp.framework.MiraPlugin;
+-import sbs.mira.pvp.framework.MiraPulse;
+-import sbs.mira.pvp.framework.MiraModule;
+-import sbs.mira.pvp.stats.Database;
+-import sbs.mira.pvp.stats.Preparable;
+-import org.bukkit.scheduler.BukkitRunnable;
+-import org.bukkit.scheduler.BukkitTask;
+-
+-import java.sql.PreparedStatement;
+-import java.util.concurrent.ConcurrentLinkedQueue;
+-
+-/**
+- * Responsible for executing statements into
+- * the database. They can be created by anything
+- * for any reason, but are usually used for stats.
+- * <p>
+- * This should be used to insert or delete rows, not retrieve them.
+- *
+- * @author ILavaYou
+- * @version 1.0
+- * @see Database
+- * @see Preparable
+- * @since 1.1
+- */
+-public class QueryUtility extends MiraModule {
+-
+-    private final ConcurrentLinkedQueue<Preparable> queries;
+-    private final Database db;
+-    private BukkitTask thread;
+-
+-    public QueryUtility(MiraPulse main, boolean enabled) {
+-        super(main);
+-        queries = new ConcurrentLinkedQueue<>();
+-
+-        // Only create database connection if database is enabled.
+-        if (enabled) {
+-            db = new Database(mira().plugin());
+-            //Leave it open, or?
+-            saveThread(mira().plugin());
+-        } else db = null;
+-    }
+-
+-    /**
+-     * Puts a query in a queue, that the thread will execute.
+-     *
+-     * @param query The query to execute.
+-     */
+-    public void addQuery(Preparable query) {
+-        queries.add(query);
+-    }
+-
+-    /**
+-     * Craft a PreparedStatement.
+-     *
+-     * @param query The query to prepare.
+-     * @return The prepared statement.
+-     */
+-    public PreparedStatement prepare(String query) {
+-        return db.prepare(query);
+-    }
+-
+-    /**
+-     * Stops the thread.
+-     */
+-    @SuppressWarnings("unused")
+-    public void stop() {
+-        thread.cancel();
+-    }
+-
+-    /**
+-     * Polls the query queue and executes any polled query.
+-     * This is executed every 0.25 seconds. (maybe increase this?)
+-     *
+-     * @param plugin The plugin to execute the BukkitRunnable with.
+-     */
+-    private void saveThread(MiraPlugin plugin) {
+-        thread = new BukkitRunnable() {
+-            int counter = 2000;
+-
+-            public void run() {
+-                // Refresh the database connection every 500 seconds.
+-                counter--;
+-                if (counter <= 0) {
+-                    counter = 2000;
+-                    db.close();
+-                    db.reopen();
+-                }
+-
+-                // Prepare and execute one query, if any.
+-                Preparable poll = queries.poll();
+-                if (poll == null) return;
+-                poll.prepareAndRun();
+-            }
+-        }.runTaskTimerAsynchronously(plugin, 100L, 5L);
+-    }
+-}
+diff --git a/src/main/java/sbs/mira/pvp/util/modules/RespawnUtility.java b/src/main/java/sbs/mira/pvp/util/modules/RespawnUtility.java
+deleted file mode 100644
+index 02067c1..0000000
+--- a/src/main/java/sbs/mira/pvp/util/modules/RespawnUtility.java
++++ /dev/null
+@@ -1,143 +0,0 @@
+-package sbs.mira.pvp.util.modules;
+-
+-import sbs.mira.pvp.MiraPvpPlayer;
+-import sbs.mira.pvp.event.MatchPlayerRespawnEvent;
+-import sbs.mira.pvp.framework.MiraPlayer;
+-import sbs.mira.pvp.framework.util.WarMatch;
+-import sbs.mira.pvp.framework.MiraModule;
+-import sbs.mira.pvp.MiraPvpMaster;
+-import net.minecraft.server.v1_12_R1.DataWatcherObject;
+-import net.minecraft.server.v1_12_R1.DataWatcherRegistry;
+-import org.bukkit.Bukkit;
+-import org.bukkit.GameMode;
+-import org.bukkit.craftbukkit.v1_21_R5.entity.CraftPlayer;
+-import org.bukkit.event.EventHandler;
+-import org.bukkit.event.Listener;
+-import org.bukkit.event.player.PlayerQuitEvent;
+-import org.bukkit.potion.PotionEffect;
+-import org.bukkit.potion.PotionEffectType;
+-
+-import java.util.HashMap;
+-import java.util.Map;
+-import java.util.UUID;
+-
+-/**
+- * This class handles cruicial inventory and
+- * item-related prodecures as documented below.
+- * <p>
+- * Created by Josh on 20/04/2017.
+- *
+- * @author s101601828 @ Swin.
+- * @version 1.0
+- * @since 1.0
+- */
+-public class RespawnUtility extends MiraModule implements Listener {
+-
+-    private final HashMap<UUID, DeathInfo> info;
+-
+-    /**
+-     * Most utilities do not need constructors,
+-     * but this one has one since the respawn
+-     * task needs to be initiated when the program
+-     * starts.
+-     *
+-     * @param main Running instance of Manager.
+-     */
+-
+-    public RespawnUtility(MiraPvpMaster main) {
+-        super(main);
+-        main.plugin().getServer().getPluginManager().registerEvents(this, main.plugin());
+-
+-        // Initialise the key/value set for the respawning task.
+-        info = new HashMap<>();
+-        // Start the respawning task!
+-        startTask();
+-    }
+-
+-    /**
+-     * Handles respawning when a player dies.
+-     *
+-     * @param pl The player who died.
+-     */
+-    public void onDeath(MiraPlayer pl) {
+-        if (pl.crafter().getGameMode() != GameMode.SURVIVAL) return; // Ignore non-match deaths.
+-        pl.crafter().setHealth(20); // Revive them, since they don't technically "die".
+-        mira().items().clear(pl); // Clear their inventory.
+-        pl.crafter().setGameMode(GameMode.SPECTATOR); // Temporarily make them a spectator.
+-        pl.crafter().addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, 400, 1)); // Death effect.
+-
+-        // Create and store their death information.
+-        DeathInfo inf = new DeathInfo((MiraPvpPlayer) pl);
+-        info.put(pl.crafter().getUniqueId(), inf);
+-        if (!mira().match().getCurrentMode().isPermaDeath())
+-            pl.crafter().sendMessage("You died! Respawning in " + inf.timeUntilRespawn + " second" + mira().strings().plural(inf.timeUntilRespawn));
+-        else
+-            pl.crafter().sendMessage("You have been ejected from the round.");
+-
+-    }
+-
+-    /**
+-     * Runs the respawn task. The basic logic is:
+-     * For every single player being tracked:
+-     * How many more seconds until they respawn?
+-     * If it's 0 seconds, respawn them.
+-     * If it's more than 0 seconds, subtract one second.
+-     */
+-    private void startTask() {
+-        Bukkit.getScheduler().runTaskTimer(mira().plugin(), () -> {
+-            HashMap<UUID, DeathInfo> inf = new HashMap<>(info);
+-            // Temporarily duplicate this key/value set to avoid concurrent errors.
+-            for (Map.Entry<UUID, DeathInfo> entry : inf.entrySet()) {
+-                info.get(entry.getKey()).timeUntilRespawn--; // Decrement the player's respawn time.
+-                if (info.get(entry.getKey()).timeUntilRespawn == 0) { // Time to respawn?
+-                    info.remove(entry.getKey());
+-                    if (mira().match().getStatus() == WarMatch.Status.PLAYING) {
+-                        // Respawn them if the match is still playing.
+-                        MiraPlayer respawn = mira().getWarPlayer(entry.getKey());
+-                        Bukkit.getPluginManager().callEvent(new MatchPlayerRespawnEvent(respawn));
+-                        ((CraftPlayer) respawn.crafter()).getHandle().getDataWatcher().set(new DataWatcherObject<>(10, DataWatcherRegistry.b),0);
+-                    }
+-                    break;
+-                }
+-            }
+-        }, 0L, 20L);
+-    }
+-
+-    /**
+-     * Clear all respawning information.
+-     * This should be called when a round ends.
+-     */
+-    public void clear() {
+-        info.clear();
+-    }
+-
+-    /**
+-     * Clear respawning information for a player.
+-     * This should be called when a player leaves.
+-     *
+-     * @param toClear The player to get their info removed.
+-     */
+-    void clearFor(MiraPlayer toClear) {
+-        info.remove(toClear.crafter().getUniqueId());
+-    }
+-
+-    @EventHandler
+-    public void onQuit(PlayerQuitEvent event) {
+-        // Remove their respawn information if they log out as it is no longer needed.
+-        if (info.containsKey(event.getPlayer().getUniqueId()))
+-            info.remove(event.getPlayer().getUniqueId());
+-    }
+-
+-    /**
+-     * Simple record that stores an integer.
+-     * Some day, this class may be extended to hold more info.
+-     */
+-    private class DeathInfo {
+-
+-        DeathInfo(MiraPvpPlayer wpp) {
+-            timeUntilRespawn = 6 + (int) Math.ceil(wpp.stats().getCurrentStreak() / 2);
+-        }
+-
+-        int timeUntilRespawn; // Respawn hell.
+-    }
+-}
+diff --git a/src/main/java/sbs/mira/pvp/util/modules/StatsCommandUtility.java b/src/main/java/sbs/mira/pvp/util/modules/StatsCommandUtility.java
+index 6ab8ea9..e6785f5 100644
+--- a/src/main/java/sbs/mira/pvp/util/modules/StatsCommandUtility.java
++++ b/src/main/java/sbs/mira/pvp/util/modules/StatsCommandUtility.java
+@@ -1,9 +1,9 @@
+ package sbs.mira.pvp.util.modules;
+ 
+-import sbs.mira.pvp.MiraPvpPlayer;
++import sbs.mira.pvp.MiraVersePlayer;
+ import sbs.mira.pvp.framework.MiraModule;
+ import sbs.mira.pvp.stats.WarStats;
+-import sbs.mira.pvp.MiraPvpMaster;
++import sbs.mira.pvp.MiraVerseModel;
+ import com.sk89q.minecraft.util.commands.Command;
+ import com.sk89q.minecraft.util.commands.CommandContext;
+ import com.sk89q.minecraft.util.commands.CommandNumberFormatException;
+@@ -39,7 +39,7 @@ import java.util.List;
+ public class StatsCommandUtility extends MiraModule {
+ 
+     @SuppressWarnings("unused") // This is used, just not directly.
+-    public StatsCommandUtility(MiraPvpMaster main) {
++    public StatsCommandUtility( MiraVerseModel main ) {
+         super(main);
+     }
+ 
+@@ -69,7 +69,7 @@ public class StatsCommandUtility extends MiraModule {
+ 
+         if (finalTarget.isOnline()) {
+             Player target = Bukkit.getPlayer(finalTarget.getUniqueId());
+-            WarStats stats = ((MiraPvpPlayer) mira().getWarPlayer(finalTarget.getUniqueId())).stats();
++            WarStats stats = (( MiraVersePlayer ) mira( ).getWarPlayer( finalTarget.getUniqueId( ) )).stats( );
+             displayStats(sender, target.getDisplayName() + ChatColor.GREEN, stats.getKills(), stats.getDeaths(), stats.getCurrentStreak(), stats.getHighestStreak(), stats.getMatchesPlayed());
+         } else {
+             if (waiting.contains(sender.getName())) {
+@@ -79,7 +79,7 @@ public class StatsCommandUtility extends MiraModule {
+             waiting.add(sender.getName());
+             Bukkit.getScheduler().runTaskAsynchronously(mira().plugin(), () -> {
+                 try {
+-                    PreparedStatement stmt = ((MiraPvpMaster) mira()).query().prepare("SELECT * FROM `WarStats` NATURAL JOIN `Players` WHERE `player_uuid`=?");
++                    PreparedStatement stmt = (( MiraVerseModel ) mira( )).db( ).prepare( "SELECT * FROM `WarStats` NATURAL JOIN `Players` WHERE `player_uuid`=?" );
+                     stmt.setString(1, finalTarget.getUniqueId().toString());
+                     ResultSet stats = stmt.executeQuery();
+                     if (stats.next())
+@@ -122,7 +122,7 @@ public class StatsCommandUtility extends MiraModule {
+         Bukkit.getScheduler().runTaskAsynchronously(mira().plugin(), () -> {
+             StringBuilder msg = new StringBuilder("\n--- Leaderboard Page " + page + " ---\n");
+             try {
+-                ResultSet lb = ((MiraPvpMaster) mira()).query().prepare("SELECT * FROM `WarStats` NATURAL JOIN `Players` ORDER BY `kills` DESC LIMIT 10 OFFSET " + offset).executeQuery();
++                ResultSet lb = (( MiraVerseModel ) mira( )).db( ).prepare( "SELECT * FROM `WarStats` NATURAL JOIN `Players` ORDER BY `kills` DESC LIMIT 10 OFFSET " + offset ).executeQuery( );
+                 for (int i = 0; i < 10; i++) {
+                     if (!lb.next()) {
+                         if (i != 9) msg.append(ChatColor.RED).append("No more results to display.\n");

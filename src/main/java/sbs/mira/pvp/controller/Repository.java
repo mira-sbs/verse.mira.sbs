@@ -1,10 +1,10 @@
-package sbs.mira.pvp.util;
+package sbs.mira.pvp.controller;
 
-import sbs.mira.pvp.MiraPvpMaster;
+import sbs.mira.pvp.MiraVerseModel;
 import sbs.mira.pvp.framework.util.WarCache;
 import sbs.mira.pvp.framework.MiraPulse;
 import sbs.mira.pvp.game.Gamemode;
-import sbs.mira.pvp.game.Map;
+import sbs.mira.pvp.model.map.MiraMapModelConcrete;
 import au.edu.swin.war.game.modes.*;
 import au.edu.swin.war.maps.*;
 import sbs.mira.pvp.game.modes.*;
@@ -21,7 +21,8 @@ import sbs.mira.pvp.maps.*;
  * Created by Josh on 20/04/2017.
  * @since 1.0
  */
-public class Cache extends WarCache {
+public class Repository
+  extends WarCache {
 
     /**
      * Constructor of the extended Cache.
@@ -30,7 +31,7 @@ public class Cache extends WarCache {
      *
      * @param main The supercontroller.
      */
-    Cache(MiraPvpMaster main) {
+    public Repository( MiraVerseModel main ) {
         super(main);
     }
 
@@ -76,13 +77,13 @@ public class Cache extends WarCache {
      *
      * @param toLoad The map to load.
      */
-    private void loadMap(Class<? extends Map> toLoad) {
+    private void loadMap(Class<? extends MiraMapModelConcrete> toLoad ) {
         try {
             // Load this class as if it were a Map.
-            Map result = toLoad.newInstance(); // Initialise it.
-            result.init(mira()); // Call init() before anything else!
-            maps.put(result.getMapName(), result); // Register it in the maps key/value set.
-            mira().plugin().log("Map initialised and stored: " + result.getMapName()); // Log it?
+            MiraMapModelConcrete result = toLoad.newInstance( ); // Initialise it.
+            result.definition( mira( ) ); // Call init() before anything else!
+            maps.put( result.label( ), result ); // Register it in the maps key/value set.
+            mira().plugin().log("Map initialised and stored: " + result.label( ) ); // Log it?
         } catch (InstantiationException | IllegalAccessException e) {
             e.printStackTrace();
         }
@@ -119,7 +120,7 @@ public class Cache extends WarCache {
     public Gamemode.Mode matchMode(String preference) {
         Gamemode.Mode found = null;
         if (preference == null) return null;
-        for (Gamemode.Mode mode : ((Map) getCurrentMap()).getGamemodes()) {
+        for (Gamemode.Mode mode : (( MiraMapModelConcrete ) getCurrentMap( )).game_modes( )) {
             if (mode.getActualShortName().toLowerCase().startsWith(preference.toLowerCase())) {
                 found = mode;
                 break;

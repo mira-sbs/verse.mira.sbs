@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
 import sbs.mira.pvp.framework.game.WarTeam;
 import sbs.mira.pvp.framework.stored.SerializedLocation;
 import sbs.mira.pvp.game.Gamemode;
-import sbs.mira.pvp.game.Map;
+import sbs.mira.pvp.model.map.MiraMapModelConcrete;
 import sbs.mira.pvp.game.modes.DTM;
 import sbs.mira.pvp.game.util.SpawnArea;
 import org.bukkit.ChatColor;
@@ -24,7 +24,8 @@ import org.bukkit.util.BlockIterator;
 import java.util.UUID;
 
 @SuppressWarnings("Duplicates")
-public class ExoticPastures extends Map {
+public class ExoticPastures extends MiraMapModelConcrete
+{
 
     private final UUID[] creators = {id("2e1c067c-6f09-4db0-8cd7-defc12ce622e")};
     private final String mapName = "Exotic Pastures";
@@ -35,26 +36,26 @@ public class ExoticPastures extends Map {
 
     private final ItemStack GADGET = createGadget(Material.EGG, 5, 0, "Insta-Rototill", "Throw this at grass to instantly become an awesome farmer!");
 
-    protected void readyAttributes() {
-        setMapName(mapName);
-        setCreators(creators);
-        setGamemodes(gamemodes);
-        registerTeam(team1);
-        registerTeam(team2);
+    protected void define_rules( ) {
+        label( mapName );
+        creators( creators );
+        game_modes( gamemodes );
+        team( team1 );
+        team( team2 );
         setAllowBuild(true, true);
         setPlateauY(77);
         objectives().add(new SpawnArea(main, -51, -48, -45, -42, true, false));
         objectives().add(new SpawnArea(main, 43, -4, 49, 2, true, false));
         objectives().add(new DTM.Monument(-33, 109, 4, -33, 110, 4, team1, main, false, Material.OBSIDIAN));
         objectives().add(new DTM.Monument(31, 109, -50, 31, 110, -50, team2, main, false, Material.OBSIDIAN));
-        setTimeLockTime(14000);
-        setMatchDuration(600);
+        time_lock_time( 14000 );
+        match_duration( 600 );
     }
 
     protected void readySpawns() {
         addTeamSpawn(team1, new SerializedLocation(-47.5, 134, -44.5, 90, 0));
         addTeamSpawn(team2, new SerializedLocation(46.5, 134, -0.5, 270, 0));
-        setSpectatorSpawn(new SerializedLocation(-1.5, 107, -70.5, 0, 0));
+        spectator_spawn_position( new SerializedLocation( -1.5, 107, -70.5, 0, 0) );
     }
 
     @Override

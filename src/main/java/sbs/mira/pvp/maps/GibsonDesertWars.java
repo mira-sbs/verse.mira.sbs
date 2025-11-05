@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
 import sbs.mira.pvp.framework.game.WarTeam;
 import sbs.mira.pvp.framework.stored.SerializedLocation;
 import sbs.mira.pvp.game.Gamemode;
-import sbs.mira.pvp.game.Map;
+import sbs.mira.pvp.model.map.MiraMapModelConcrete;
 import sbs.mira.pvp.game.modes.DTM;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -14,7 +14,8 @@ import org.bukkit.inventory.PlayerInventory;
 import java.util.UUID;
 
 @SuppressWarnings("Duplicates")
-public class GibsonDesertWars extends Map {
+public class GibsonDesertWars extends MiraMapModelConcrete
+{
 
     private final UUID[] creators = {id("d04d579e-78ed-4c60-87d4-39ef95755be6"),id("5435a69c-d78a-46d7-bba1-02b1c9ed71b9")};
     private final String mapName = "Gibson Desert Wars";
@@ -23,18 +24,18 @@ public class GibsonDesertWars extends Map {
     private final WarTeam team1 = new WarTeam("Blue Team", ChatColor.BLUE, 25);
     private final WarTeam team2 = new WarTeam("Red Team", ChatColor.RED, 25);
 
-    protected void readyAttributes() {
-        setMapName(mapName);
-        setCreators(creators);
-        setGamemodes(gamemodes);
-        registerTeam(team1);
-        registerTeam(team2);
+    protected void define_rules( ) {
+        label( mapName );
+        creators( creators );
+        game_modes( gamemodes );
+        team( team1 );
+        team( team2 );
         setAllowBuild(true, true);
         setBuildBoundary(-30, -119, 215, 28);
         objectives().add(new DTM.Monument(154, 80, -49, 158, 81, -48, team1, main, false, Material.SMOOTH_BRICK));
         objectives().add(new DTM.Monument(25, 80, -44, 29, 81, -43, team2, main, false, Material.SMOOTH_BRICK));
-        setTimeLockTime(4000);
-        setMatchDuration(600);
+        time_lock_time( 4000 );
+        match_duration( 600 );
     }
 
     protected void readySpawns() {
@@ -44,7 +45,7 @@ public class GibsonDesertWars extends Map {
         addTeamSpawn(team2, new SerializedLocation(-11.5, 61, 9.5, 180, 0));
         addTeamSpawn(team2, new SerializedLocation(-25.5, 75, -4.5, 225, 0));
         addTeamSpawn(team2, new SerializedLocation(15.5, 73, 11.5, 135, 0));
-        setSpectatorSpawn(new SerializedLocation(92, 82, -45.5, 90, 15));
+        spectator_spawn_position( new SerializedLocation( 92, 82, -45.5, 90, 15) );
     }
 
     @Override

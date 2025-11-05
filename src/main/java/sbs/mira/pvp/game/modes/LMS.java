@@ -49,7 +49,7 @@ public class LMS extends Gamemode {
         alive = new ArrayList<>();
         participated = new ArrayList<>();
 
-        if (getJoined() < 2) {
+        if ( joined_player_count( ) < 2) {
             // LMS requires 2 players at the least to play.
             Bukkit.broadcastMessage("There needs to be 2 or more participating players!");
             logEvent("Match cancelled as there was not enough players");

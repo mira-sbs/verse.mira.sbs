@@ -1,9 +1,9 @@
 package sbs.mira.pvp.util.modules;
 
-import sbs.mira.pvp.MiraPvpPlayer;
+import sbs.mira.pvp.MiraVersePlayer;
 import sbs.mira.pvp.framework.MiraModule;
 import sbs.mira.pvp.stats.WarStats;
-import sbs.mira.pvp.MiraPvpMaster;
+import sbs.mira.pvp.MiraVerseModel;
 import com.sk89q.minecraft.util.commands.Command;
 import com.sk89q.minecraft.util.commands.CommandContext;
 import com.sk89q.minecraft.util.commands.CommandNumberFormatException;
@@ -39,7 +39,7 @@ import java.util.List;
 public class StatsCommandUtility extends MiraModule {
 
     @SuppressWarnings("unused") // This is used, just not directly.
-    public StatsCommandUtility(MiraPvpMaster main) {
+    public StatsCommandUtility( MiraVerseModel main ) {
         super(main);
     }
 
@@ -69,7 +69,7 @@ public class StatsCommandUtility extends MiraModule {
 
         if (finalTarget.isOnline()) {
             Player target = Bukkit.getPlayer(finalTarget.getUniqueId());
-            WarStats stats = ((MiraPvpPlayer) mira().getWarPlayer(finalTarget.getUniqueId())).stats();
+            WarStats stats = (( MiraVersePlayer ) mira( ).getWarPlayer( finalTarget.getUniqueId( ) )).stats( );
             displayStats(sender, target.getDisplayName() + ChatColor.GREEN, stats.getKills(), stats.getDeaths(), stats.getCurrentStreak(), stats.getHighestStreak(), stats.getMatchesPlayed());
         } else {
             if (waiting.contains(sender.getName())) {
@@ -79,7 +79,7 @@ public class StatsCommandUtility extends MiraModule {
             waiting.add(sender.getName());
             Bukkit.getScheduler().runTaskAsynchronously(mira().plugin(), () -> {
                 try {
-                    PreparedStatement stmt = ((MiraPvpMaster) mira()).query().prepare("SELECT * FROM `WarStats` NATURAL JOIN `Players` WHERE `player_uuid`=?");
+                    PreparedStatement stmt = (( MiraVerseModel ) mira( )).db( ).prepare( "SELECT * FROM `WarStats` NATURAL JOIN `Players` WHERE `player_uuid`=?" );
                     stmt.setString(1, finalTarget.getUniqueId().toString());
                     ResultSet stats = stmt.executeQuery();
                     if (stats.next())
@@ -122,7 +122,7 @@ public class StatsCommandUtility extends MiraModule {
         Bukkit.getScheduler().runTaskAsynchronously(mira().plugin(), () -> {
             StringBuilder msg = new StringBuilder("\n--- Leaderboard Page " + page + " ---\n");
             try {
-                ResultSet lb = ((MiraPvpMaster) mira()).query().prepare("SELECT * FROM `WarStats` NATURAL JOIN `Players` ORDER BY `kills` DESC LIMIT 10 OFFSET " + offset).executeQuery();
+                ResultSet lb = (( MiraVerseModel ) mira( )).db( ).prepare( "SELECT * FROM `WarStats` NATURAL JOIN `Players` ORDER BY `kills` DESC LIMIT 10 OFFSET " + offset ).executeQuery( );
                 for (int i = 0; i < 10; i++) {
                     if (!lb.next()) {
                         if (i != 9) msg.append(ChatColor.RED).append("No more results to display.\n");

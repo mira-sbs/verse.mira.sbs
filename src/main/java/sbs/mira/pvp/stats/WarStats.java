@@ -1,6 +1,6 @@
 package sbs.mira.pvp.stats;
 
-import sbs.mira.pvp.MiraPvpMaster;
+import sbs.mira.pvp.MiraVerseModel;
 import sbs.mira.pvp.framework.MiraPlayer;
 
 import java.sql.PreparedStatement;
@@ -15,7 +15,7 @@ import java.util.UUID;
  */
 public class WarStats {
 
-    private final MiraPvpMaster main;
+    private final MiraVerseModel main;
     private final UUID owner;
 
     private int kills, deaths, highestStreak, currentStreak, matchesPlayed, revives;
@@ -30,7 +30,7 @@ public class WarStats {
      * @param matchesWon    Current killstreak.
      * @param revives       Amount of revives remaining.
      */
-    public WarStats(MiraPvpMaster main, UUID owner, int kills, int deaths, int highestStreak, int matchesWon, int revives) {
+    public WarStats( MiraVerseModel main, UUID owner, int kills, int deaths, int highestStreak, int matchesWon, int revives ) {
         this.main = main;
         this.owner = owner;
         this.kills = kills;
@@ -46,7 +46,7 @@ public class WarStats {
      *
      * @param owner Owner of this stats record.
      */
-    public WarStats(MiraPvpMaster main, UUID owner) {
+    public WarStats( MiraVerseModel main, UUID owner ) {
         this.main = main;
         this.owner = owner;
         this.kills = 0;
@@ -136,9 +136,9 @@ public class WarStats {
      */
     private void updateQuery(String query) {
         String toExecute = "UPDATE `WarStats` SET " + query + " WHERE `player_uuid`='" + owner + "'";
-        main.query().addQuery(() -> {
+        main.db().addQuery( () -> {
             try {
-                PreparedStatement execute = main.query().prepare(toExecute);
+                PreparedStatement execute = main.db().prepare( toExecute);
                 execute.executeUpdate();
                 execute.close();
             } catch (SQLException e) {

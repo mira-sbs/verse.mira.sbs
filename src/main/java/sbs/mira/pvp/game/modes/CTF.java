@@ -5,7 +5,7 @@ import sbs.mira.pvp.framework.game.WarTeam;
 import sbs.mira.pvp.framework.stored.SerializedLocation;
 import sbs.mira.pvp.framework.MiraPulse;
 import sbs.mira.pvp.game.Gamemode;
-import sbs.mira.pvp.MiraPvpMaster;
+import sbs.mira.pvp.MiraVerseModel;
 import sbs.mira.pvp.util.WoolColor;
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -140,9 +140,9 @@ public class CTF extends Gamemode {
     private void doFireworks() {
         for (CTFInfo inf : info.values())
             if (inf.getHolder() == null)
-                ((MiraPvpMaster) main).entity().spawnFirework(inf.getFlag().clone().add(0.5, 1, 0.5), inf.getTeam().getTeamColor());
+                (( MiraVerseModel ) main).entities( ).spawnFirework( inf.getFlag( ).clone( ).add( 0.5, 1, 0.5 ), inf.getTeam( ).getTeamColor( ) );
             else
-                ((MiraPvpMaster) main).entity().spawnFirework(Bukkit.getPlayer(inf.getHolder()).getLocation(), inf.getTeam().getTeamColor());
+                (( MiraVerseModel ) main).entities( ).spawnFirework( Bukkit.getPlayer( inf.getHolder( ) ).getLocation( ), inf.getTeam( ).getTeamColor( ) );
     }
 
     /**

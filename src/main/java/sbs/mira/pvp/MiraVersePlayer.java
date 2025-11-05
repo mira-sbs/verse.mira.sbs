@@ -1,10 +1,11 @@
 package sbs.mira.pvp;
 
 import org.bukkit.ChatColor;
-import org.bukkit.craftbukkit.v1_21_R5.entity.CraftPlayer;
+import org.bukkit.craftbukkit.v1_21_R6.entity.CraftPlayer;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import sbs.mira.core.MiraPlayer;
-import sbs.mira.pvp.game.WarTeam;
+import sbs.mira.core.model.MiraPlayerModel;
+import sbs.mira.pvp.model.map.MiraTeamModel;
 import sbs.mira.pvp.stats.WarStats;
 
 /**
@@ -14,46 +15,40 @@ import sbs.mira.pvp.stats.WarStats;
  * @author jj.mira.sbs
  * @author jd.mira.sbs
  * @version 1.0.1
- * @see sbs.mira.pvp.framework.MiraPlayer
- * @see sbs.mira.pvp.MiraPvpPulse
+ * @see MiraVersePulse
  * @since 1.0.0
  */
 public final
-class MiraPvpPlayer
-  extends MiraPlayer<MiraPvpPulse>
+class MiraVersePlayer
+  extends MiraPlayerModel<MiraVersePulse>
 {
   
   /**
    * @see sbs.mira.pvp.stats.WarStats
    */
-  private final WarStats stats;
-  
+  private WarStats stats;
   /***
    * true if the player has indicated that they would like to join a team (once available).
    */
   private boolean joined;
-  /**
-   * @see sbs.mira.pvp.framework.game.WarTeam
-   */
-  private WarTeam team;
+  private MiraTeamModel team;
   
   public
-  MiraPvpPlayer(WarStats stats, CraftPlayer player, MiraPvpPulse pulse)
+  MiraVersePlayer( CraftPlayer player, MiraVersePulse pulse )
   {
-    super(player, pulse);
+    super( player, pulse );
     
-    this.stats = stats;
     this.joined = false;
     this.team = null;
     
-    changes_visibility();
+    changes_visibility( );
   }
   
   /**
    * @see #stats
    */
   public
-  WarStats stats()
+  WarStats stats( )
   {
     return stats;
   }
@@ -62,7 +57,7 @@ class MiraPvpPlayer
    * @see #joined
    */
   public
-  boolean joined()
+  boolean joined( )
   {
     return joined;
   }
@@ -71,7 +66,7 @@ class MiraPvpPlayer
    * @see #joined
    */
   public
-  void joined(boolean joined)
+  void joined( boolean joined )
   {
     this.joined = joined;
   }
@@ -80,7 +75,7 @@ class MiraPvpPlayer
    * @return true if the mira pvp stan has an [sic, lol] designated team.
    */
   public
-  boolean has_team()
+  boolean has_team( )
   {
     return team != null;
   }
@@ -91,8 +86,8 @@ class MiraPvpPlayer
    *
    * @return Player's associated team.
    */
-  public @Nullable
-  WarTeam team()
+  public @NotNull
+  MiraTeamModel team( )
   {
     return team;
   }
@@ -101,12 +96,12 @@ class MiraPvpPlayer
    * @param new_team the player is joining this team (consensually).
    */
   public
-  void joins(WarTeam new_team)
+  void joins( @Nullable MiraTeamModel new_team )
   {
     this.team = new_team;
     
-    changes_visibility();
-    changes_name();
+    changes_visibility( );
+    changes_name( );
   }
   
   /**
@@ -117,44 +112,44 @@ class MiraPvpPlayer
    * </ul>
    */
   private
-  void changes_visibility()
+  void changes_visibility( )
   {
-    if (has_team())
+    if ( has_team( ) )
     {
-      this.crafter().setCollidable(true);
-      for (MiraPvpPlayer player : pulse().master().players().values())
+      this.crafter( ).setCollidable( true );
+      for ( MiraVersePlayer player : pulse( ).model( ).players( ).values( ) )
       {
-        if (!player.equals(this))
+        if ( !player.equals( this ) )
         {
-          if (player.has_team())
+          if ( player.has_team( ) )
           {
-            player.crafter().showPlayer(this.player);
-            this.player.showPlayer(player.crafter());
+            player.crafter( ).showPlayer( this.player );
+            this.player.showPlayer( player.crafter( ) );
           }
           else
           {
-            player.crafter().showPlayer(this.player);
-            this.player.hidePlayer(player.crafter());
+            player.crafter( ).showPlayer( this.player );
+            this.player.hidePlayer( player.crafter( ) );
           }
         }
       }
     }
     else
     {
-      player.setCollidable(false);
-      for (MiraPvpPlayer player : pulse().master().players().values())
+      player.setCollidable( false );
+      for ( MiraVersePlayer player : pulse( ).model( ).players( ).values( ) )
       {
-        if (!player.equals(this))
+        if ( !player.equals( this ) )
         {
-          if (player.has_team())
+          if ( player.has_team( ) )
           {
-            player.crafter().hidePlayer(this.player);
-            this.player.showPlayer(player.crafter());
+            player.crafter( ).hidePlayer( this.player );
+            this.player.showPlayer( player.crafter( ) );
           }
           else
           {
-            player.crafter().showPlayer(this.player);
-            this.player.showPlayer(player.crafter());
+            player.crafter( ).showPlayer( this.player );
+            this.player.showPlayer( player.crafter( ) );
           }
         }
       }
@@ -167,35 +162,44 @@ class MiraPvpPlayer
    * team changes or rank changes.
    */
   public
-  void changes_name()
+  void changes_name( )
   {
     String prefix = "";
-    if (pulse().plugin().has_permission(crafter(), "war.admin"))
+    if ( crafter( ).hasPermission( "war.admin" ) )
     {
       prefix = ChatColor.GOLD + "@";
     }
     else
     {
-      if (pulse().plugin().has_permission(crafter(), "war.mod"))
+      if ( crafter( ).hasPermission( "war.mod" ) )
       {
         prefix = ChatColor.DARK_PURPLE + "@";
       }
       
-      if (pulse().plugin().has_permission(crafter(), "war.donatorplus"))
+      if ( crafter( ).hasPermission( "war.donatorplus" ) )
       {
         prefix = ChatColor.YELLOW + "#" + prefix;
       }
-      else if (pulse().plugin().has_permission(crafter(), "war.donator"))
+      else if ( crafter( ).hasPermission( "war.donator" ) )
       {
         prefix = ChatColor.GREEN + "#" + prefix;
       }
     }
-    if (pulse().cache().getCurrentMap().isCreator(crafter().getUniqueId()))
+    /*if ( pulse( ).cache( ).getCurrentMap( ).isCreator( crafter( ).getUniqueId( ) ) )
     {
       prefix = ChatColor.DARK_RED + "#" + prefix;
-    }
+    }*/
     
-    ChatColor teamColor = has_team() ? team().getTeamColor() : ChatColor.LIGHT_PURPLE;
-    crafter().setDisplayName(prefix + teamColor + name() + ChatColor.WHITE);
+    ChatColor teamColor = has_team( ) ? team( ).colour( ) : ChatColor.LIGHT_PURPLE;
+    crafter( ).setDisplayName( prefix + teamColor + name( ) + ChatColor.WHITE );
+  }
+  
+  /**
+   * @see org.bukkit.entity.Player#sendMessage(String)
+   */
+  public
+  void messages( @NotNull String content )
+  {
+    this.crafter( ).sendMessage( content );
   }
 }

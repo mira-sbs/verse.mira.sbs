@@ -47,7 +47,7 @@ public class LTS extends Gamemode {
         participated = new ArrayList<>();
         original = new HashMap<>();
 
-        if (getJoined() < 2) {
+        if ( joined_player_count( ) < 2) {
             Bukkit.broadcastMessage("There needs to be 2 or more participating players!");
             logEvent("Match cancelled as there was not enough players");
             onEnd();

@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
 import sbs.mira.pvp.framework.game.WarTeam;
 import sbs.mira.pvp.framework.stored.SerializedLocation;
 import sbs.mira.pvp.game.Gamemode;
-import sbs.mira.pvp.game.Map;
+import sbs.mira.pvp.model.map.MiraMapModelConcrete;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -19,7 +19,8 @@ import org.bukkit.util.Vector;
 import java.util.UUID;
 
 @SuppressWarnings("Duplicates")
-public class FairwickVillage extends Map {
+public class FairwickVillage extends MiraMapModelConcrete
+{
 
     private final UUID[] creators = {id("2e1c067c-6f09-4db0-8cd7-defc12ce622e")};
     private final String mapName = "Fairwick Village";
@@ -30,15 +31,15 @@ public class FairwickVillage extends Map {
 
     private final ItemStack GADGET = createGadget(Material.FIREWORK, 3, 0, "Jumpwork", "Right click on a block to rise up", "Jump at the right time for max height");
 
-    protected void readyAttributes() {
-        setMapName(mapName);
-        setCreators(creators);
-        setGamemodes(gamemodes);
-        registerTeam(team1);
-        registerTeam(team2);
+    protected void define_rules( ) {
+        label( mapName );
+        creators( creators );
+        game_modes( gamemodes );
+        team( team1 );
+        team( team2 );
         setAllowBuild(true, false);
-        setTimeLockTime(2000);
-        setMatchDuration(600);
+        time_lock_time( 2000 );
+        match_duration( 600 );
 
         addCTFFlag(team1.getTeamName(), new SerializedLocation(72, 74, 136));
         addCTFFlag(team2.getTeamName(), new SerializedLocation(72, 74, -2));
@@ -49,7 +50,7 @@ public class FairwickVillage extends Map {
         addTeamSpawn(team1, new SerializedLocation(108.5, 73, 116.5, 180, 0));
         addTeamSpawn(team2, new SerializedLocation(108.5, 73, 18.5, 0, 0));
         addTeamSpawn(team2, new SerializedLocation(36.5, 73, 18.5, 0, 0));
-        setSpectatorSpawn(new SerializedLocation(72.5, 78, 67.5, 90, 0));
+        spectator_spawn_position( new SerializedLocation( 72.5, 78, 67.5, 90, 0) );
     }
 
     @Override

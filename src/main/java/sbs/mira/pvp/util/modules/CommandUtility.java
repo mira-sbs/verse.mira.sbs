@@ -6,9 +6,8 @@ import sbs.mira.pvp.framework.game.WarTeam;
 import sbs.mira.pvp.framework.util.WarMatch;
 import sbs.mira.pvp.framework.MiraModule;
 import sbs.mira.pvp.game.Gamemode;
-import sbs.mira.pvp.util.Cache;
-import sbs.mira.pvp.MiraPvpMaster;
-import sbs.mira.pvp.util.Match;
+import sbs.mira.pvp.controller.Repository;
+import sbs.mira.pvp.MiraVerseModel;
 import com.sk89q.minecraft.util.commands.*;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
@@ -29,7 +28,7 @@ import org.bukkit.entity.Player;
 public class CommandUtility extends MiraModule {
 
     @SuppressWarnings("unused") // This is used, just not directly.
-    public CommandUtility(MiraPvpMaster main) {
+    public CommandUtility( MiraVerseModel main ) {
         super(main);
     }
 
@@ -107,7 +106,7 @@ public class CommandUtility extends MiraModule {
             sender.sendMessage("You will no longer automatically join the next round.");
         else {
             mira().match().getCurrentMode().entryHandle(wp); // If applicable, handle their entry.
-            ((MiraPvpMaster) mira()).respawn().clearFor(wp); // Clear their respawning info if they have any.
+            (( MiraVerseModel ) mira( )).respawn( ).clearFor( wp ); // Clear their respawning info if they have any.
         }
     }
 
@@ -127,7 +126,7 @@ public class CommandUtility extends MiraModule {
     public void rotation(CommandContext args, CommandSender sender) {
         int currentPos = mira().match().rotationPoint;
         int nextPos = currentPos == mira().match().getRotationList().size() - 1 ? 0 : currentPos + 1;
-        Match match = (Match) mira().match();
+        MatchController match = ( MatchController ) mira().match();
 
         sender.sendMessage("Current rotation:");
         for (int i = 0; i < mira().match().getRotationList().size(); i++) {
@@ -285,7 +284,7 @@ public class CommandUtility extends MiraModule {
             sender.sendMessage(ChatColor.RED + "Error: Unknown map.");
             return;
         }
-        ((Match) mira().match()).setNext(found);
+        (( MatchController ) mira().match()).setNext( found);
         Bukkit.broadcastMessage(sender.getName() + " has set the next map to be " + found.getMapName());
     }
 
@@ -304,14 +303,14 @@ public class CommandUtility extends MiraModule {
             return;
         }
 
-        Match match = (Match) mira().match(); // Since this procedure contains non-WarMatch functions, use Match instead.
+        MatchController match = ( MatchController ) mira().match(); // Since this procedure contains non-WarMatch functions, use Match instead.
         if (!rig && match.getVoted().contains(((Player) sender).getUniqueId())) {
             // Do not allow a player to vote twice. Das cheating. Kindof like real elections.
             sender.sendMessage("You have already voted!");
             return;
         }
 
-        Gamemode.Mode selection = ((Cache) mira().cache()).matchMode(votingFor); // Match to the selected mode.
+        Gamemode.Mode selection = (( Repository ) mira().cache()).matchMode( votingFor); // Match to the selected mode.
         if (selection != null) {
             // Increment the votes for this gamemode by 1, or 1337 if rigging.
             match.getVotes().put(selection, match.getVotes().get(selection) + (rig ? 1337 : 1));

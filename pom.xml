@@ -25,7 +25,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <main.class>sbs.mira.pvp.MiraPvpPlugin</main.class>
+    <main.class>sbs.mira.pvp.MiraVersePlugin</main.class>
   </properties>
 
   <build>
@@ -39,8 +39,7 @@
         <directory>${basedir}/src/main/resources</directory>
         <includes>
           <include>plugin.yml</include>
-          <include>config.yml</include>
-          <include>messages.yml</include>
+          <include>pvp_messages.yml</include>
         </includes>
       </resource>
     </resources>
@@ -68,8 +67,9 @@
             <configuration>
               <artifactSet>
                 <includes>
-                  <include>com.sk89q:command-framework-bukkit</include>
                   <include>sbs.mira:core</include>
+                  <include>app.ashcon.intake:intake-bukkit:*</include>
+                  <include>app.ashcon.intake:intake-core:*</include>
                 </includes>
               </artifactSet>
             </configuration>
@@ -97,6 +97,11 @@
       <artifactId>core</artifactId>
       <version>1.0.1</version>
       <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>app.ashcon.intake</groupId>
+      <artifactId>intake-bukkit</artifactId>
+      <version>1.3-SNAPSHOT</version>
     </dependency>
   </dependencies>
 </project>

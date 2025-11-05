@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
 import sbs.mira.pvp.framework.game.WarTeam;
 import sbs.mira.pvp.framework.stored.SerializedLocation;
 import sbs.mira.pvp.game.Gamemode;
-import sbs.mira.pvp.game.Map;
+import sbs.mira.pvp.model.map.MiraMapModelConcrete;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -17,7 +17,8 @@ import org.bukkit.util.Vector;
 import java.util.UUID;
 
 @SuppressWarnings("Duplicates")
-public class Xenon extends Map {
+public class Xenon extends MiraMapModelConcrete
+{
 
     private final UUID[] creators = {id("df5fd9f4-4840-4293-9346-5c77bf7bc08f")};
     private final String mapName = "Xenon";
@@ -25,14 +26,14 @@ public class Xenon extends Map {
 
     private final WarTeam team1 = new WarTeam("Green Team", ChatColor.GREEN, 25);
 
-    protected void readyAttributes() {
-        setMapName(mapName);
-        setCreators(creators);
-        setGamemodes(gamemodes);
-        registerTeam(team1);
+    protected void define_rules( ) {
+        label( mapName );
+        creators( creators );
+        game_modes( gamemodes );
+        team( team1 );
         setAllowBuild(false, false);
-        setTimeLockTime(18000);
-        setMatchDuration(300);
+        time_lock_time( 18000 );
+        match_duration( 300 );
     }
 
     protected void readySpawns() {
@@ -66,7 +67,7 @@ public class Xenon extends Map {
         addTeamSpawn(team1, new SerializedLocation(59.5, 2, -12.5, 90, 0));
         addTeamSpawn(team1, new SerializedLocation(71.5, 2, 23.5, 135, 0));
         addTeamSpawn(team1, new SerializedLocation(35.5, 2, -13.5, 315, 0));
-        setSpectatorSpawn(new SerializedLocation(53.5, 3, 40.5, 180, 0));
+        spectator_spawn_position( new SerializedLocation( 53.5, 3, 40.5, 180, 0) );
     }
 
     @Override

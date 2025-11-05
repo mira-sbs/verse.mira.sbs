@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
 import sbs.mira.pvp.framework.game.WarTeam;
 import sbs.mira.pvp.framework.stored.SerializedLocation;
 import sbs.mira.pvp.game.Gamemode;
-import sbs.mira.pvp.game.Map;
+import sbs.mira.pvp.model.map.MiraMapModelConcrete;
 import sbs.mira.pvp.game.modes.DTM;
 import sbs.mira.pvp.game.util.SpawnArea;
 import org.bukkit.ChatColor;
@@ -16,7 +16,8 @@ import org.bukkit.potion.PotionEffectType;
 import java.util.UUID;
 
 @SuppressWarnings("Duplicates")
-public class TheRebellion extends Map {
+public class TheRebellion extends MiraMapModelConcrete
+{
 
     private final UUID[] creators = {id("2e1c067c-6f09-4db0-8cd7-defc12ce622e"), id("5bed8f4c-6c40-485a-a4be-eb7c9f3627d1")};
     private final String mapName = "The Rebellion";
@@ -25,23 +26,23 @@ public class TheRebellion extends Map {
     private final WarTeam team1 = new WarTeam("Protectors", ChatColor.RED, 30);
     private final WarTeam team2 = new WarTeam("Invaders", ChatColor.BLUE, 30);
 
-    protected void readyAttributes() {
-        setMapName(mapName);
-        setCreators(creators);
-        setGamemodes(gamemodes);
-        registerTeam(team1);
-        registerTeam(team2);
+    protected void define_rules( ) {
+        label( mapName );
+        creators( creators );
+        game_modes( gamemodes );
+        team( team1 );
+        team( team2 );
         setAllowBuild(true, true);
         setPlateauY(65);
-        setDisabledDrops(new Material[]{Material.IRON_PICKAXE, Material.DIAMOND_PICKAXE});
+        disabled_drops( new Material[]{ Material.IRON_PICKAXE, Material.DIAMOND_PICKAXE} );
         objectives().add(new DTM.Monument(-96, 137, 73, -93, 139, 76, team1, main, false, Material.PRISMARINE));
         objectives().add(new DTM.Monument(-23, 89, 32, -21, 92, 34, team2, main, false, Material.OBSIDIAN));
         objectives().add(new SpawnArea(main, -28, 10, -25, 13, false, true));
         objectives().add(new SpawnArea(main, -15, 37, -12, 40, false, true));
         objectives().add(new SpawnArea(main, -72, 95, -62, 105, false, true));
         objectives().add(new SpawnArea(main, -117, 38, -107, 48, false, true));
-        setTimeLockTime(12000);
-        setMatchDuration(600);
+        time_lock_time( 12000 );
+        match_duration( 600 );
     }
 
     protected void readySpawns() {
@@ -49,7 +50,7 @@ public class TheRebellion extends Map {
         addTeamSpawn(team1, new SerializedLocation(-67.5, 146, 100.5, 0, 0));
         addTeamSpawn(team2, new SerializedLocation(-13, 89, 39, 135, 0));
         addTeamSpawn(team2, new SerializedLocation(-26, 89, 12, 45, 0));
-        setSpectatorSpawn(new SerializedLocation(-12.5, 96, 19.5, 45, -15));
+        spectator_spawn_position( new SerializedLocation( -12.5, 96, 19.5, 45, -15) );
     }
 
     @Override

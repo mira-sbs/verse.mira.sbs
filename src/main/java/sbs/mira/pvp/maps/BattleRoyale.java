@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
 import sbs.mira.pvp.framework.game.WarTeam;
 import sbs.mira.pvp.framework.stored.SerializedLocation;
 import sbs.mira.pvp.game.Gamemode;
-import sbs.mira.pvp.game.Map;
+import sbs.mira.pvp.model.map.MiraMapModelConcrete;
 import sbs.mira.pvp.game.util.RadialSpawnPoint;
 import sbs.mira.pvp.game.util.SpawnArea;
 import net.minecraft.server.v1_12_R1.EntityLiving;
@@ -37,7 +37,8 @@ import java.lang.reflect.Field;
 import java.util.UUID;
 
 @SuppressWarnings("Duplicates")
-public class BattleRoyale extends Map {
+public class BattleRoyale extends MiraMapModelConcrete
+{
 
     private final UUID[] creators = {id("2e1c067c-6f09-4db0-8cd7-defc12ce622e"), id("a40cdbc0-ce09-4c56-a1a8-7732394b6ad4")};
     private final String mapName = "Battle Royale";
@@ -46,18 +47,18 @@ public class BattleRoyale extends Map {
     private final WarTeam team1 = new WarTeam("Purple Team", ChatColor.DARK_PURPLE, 20);
     private final WarTeam team2 = new WarTeam("Cyan Team", ChatColor.DARK_AQUA, 20);
 
-    protected void readyAttributes() {
-        setMapName(mapName);
-        setCreators(creators);
-        setGamemodes(gamemodes);
-        setDisabledDrops(Material.values());
-        registerTeam(team1);
-        registerTeam(team2);
+    protected void define_rules( ) {
+        label( mapName );
+        creators( creators );
+        game_modes( gamemodes );
+        disabled_drops( Material.values( ) );
+        team( team1 );
+        team( team2 );
         setAllowBuild(false, false);
         objectives().add(new SpawnArea(main, -37, 19, -24, 30, false, true));
         objectives().add(new SpawnArea(main, -37, -30, -24, -19, false, true));
-        setTimeLockTime(14000);
-        setMatchDuration(600);
+        time_lock_time( 14000 );
+        match_duration( 600 );
     }
 
     protected void readySpawns() {
@@ -65,7 +66,7 @@ public class BattleRoyale extends Map {
         addTeamSpawn(team1, new SerializedLocation(-28.5, 85, 25.5, 135, 0));
         addTeamSpawn(team2, new SerializedLocation(-33.5, 85, -25.5, 315, 0));
         addTeamSpawn(team2, new SerializedLocation(-28.5, 85, -25.5, 45, 0));
-        setSpectatorSpawn(new RadialSpawnPoint(main.rng, -2.5, 84, 0.5, 90, 0, 0, 5));
+        spectator_spawn_position( new RadialSpawnPoint( main.rng, -2.5, 84, 0.5, 90, 0, 0, 5) );
     }
 
     @Override

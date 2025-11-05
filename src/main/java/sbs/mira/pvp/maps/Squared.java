@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
 import sbs.mira.pvp.framework.game.WarTeam;
 import sbs.mira.pvp.framework.stored.SerializedLocation;
 import sbs.mira.pvp.game.Gamemode;
-import sbs.mira.pvp.game.Map;
+import sbs.mira.pvp.model.map.MiraMapModelConcrete;
 import sbs.mira.pvp.game.modes.DTM;
 import sbs.mira.pvp.game.util.SpawnArea;
 import org.bukkit.ChatColor;
@@ -15,7 +15,8 @@ import org.bukkit.inventory.PlayerInventory;
 import java.util.UUID;
 
 @SuppressWarnings("Duplicates")
-public class Squared extends Map {
+public class Squared extends MiraMapModelConcrete
+{
 
     private final UUID[] creators = {id("2e1c067c-6f09-4db0-8cd7-defc12ce622e"), id("a40cdbc0-ce09-4c56-a1a8-7732394b6ad4")};
     private final String mapName = "Squared";
@@ -24,21 +25,21 @@ public class Squared extends Map {
     private final WarTeam team1 = new WarTeam("Green Team", ChatColor.GREEN, 25);
     private final WarTeam team2 = new WarTeam("Red Team", ChatColor.RED, 25);
 
-    protected void readyAttributes() {
-        setMapName(mapName);
-        setCreators(creators);
-        setGamemodes(gamemodes);
-        registerTeam(team1);
-        registerTeam(team2);
+    protected void define_rules( ) {
+        label( mapName );
+        creators( creators );
+        game_modes( gamemodes );
+        team( team1 );
+        team( team2 );
         setAllowBuild(true, true);
         setBuildBoundary(-103, -51, 12, 12);
-        setBuildHeight(185);
+        maximum_build_height( 185 );
         objectives().add(new SpawnArea(main, -118, -34, -105, -5, true, false));
         objectives().add(new SpawnArea(main, 14, -34, 27, -5, true, false));
         objectives().add(new DTM.Monument(-11, 93, -24, -8, 98, -15, team1, main, true, Material.STAINED_CLAY));
         objectives().add(new DTM.Monument(-83, 93, -24, -80, 98, -15, team2, main, true, Material.STAINED_CLAY));
-        setTimeLockTime(12000);
-        setMatchDuration(600);
+        time_lock_time( 12000 );
+        match_duration( 600 );
     }
 
     protected void readySpawns() {
@@ -46,7 +47,7 @@ public class Squared extends Map {
         addTeamSpawn(team1, new SerializedLocation(23, 93, -23.5, 0, 0));
         addTeamSpawn(team2, new SerializedLocation(-113, 93, -14.5, 180, 0));
         addTeamSpawn(team2, new SerializedLocation(-113, 93, -23.5, 0, 0));
-        setSpectatorSpawn(new SerializedLocation(-45, 103, -68, 0, 15));
+        spectator_spawn_position( new SerializedLocation( -45, 103, -68, 0, 15) );
     }
 
     @Override

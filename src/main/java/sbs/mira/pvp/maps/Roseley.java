@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
 import sbs.mira.pvp.framework.game.WarTeam;
 import sbs.mira.pvp.framework.stored.SerializedLocation;
 import sbs.mira.pvp.game.Gamemode;
-import sbs.mira.pvp.game.Map;
+import sbs.mira.pvp.model.map.MiraMapModelConcrete;
 import sbs.mira.pvp.game.util.RadialSpawnPoint;
 import sbs.mira.pvp.game.util.SpawnArea;
 import org.bukkit.ChatColor;
@@ -23,7 +23,8 @@ import org.bukkit.potion.PotionEffectType;
 import java.util.UUID;
 
 @SuppressWarnings("Duplicates")
-public class Roseley extends Map {
+public class Roseley extends MiraMapModelConcrete
+{
 
     private final UUID[] creators = {id("2e1c067c-6f09-4db0-8cd7-defc12ce622e"), id("a40cdbc0-ce09-4c56-a1a8-7732394b6ad4")};
     private final String mapName = "Roseley";
@@ -34,25 +35,25 @@ public class Roseley extends Map {
 
     private final ItemStack GRAPPLE_HOOK = createGadget(Material.FISHING_ROD, 1, 0, "Grapple Hook", "Throw, and pull!");
 
-    protected void readyAttributes() {
-        setMapName(mapName);
-        setCreators(creators);
-        setGamemodes(gamemodes);
-        registerTeam(team1);
-        registerTeam(team2);
+    protected void define_rules( ) {
+        label( mapName );
+        creators( creators );
+        game_modes( gamemodes );
+        team( team1 );
+        team( team2 );
         setAllowBuild(false, false);
         objectives().add(new SpawnArea(main, -59, 56, -45, 59, true, true));
         objectives().add(new SpawnArea(main, -10, 1, -1, 10, true, true));
         addCTFFlag(team1.getTeamName(), new SerializedLocation(-30, 74, 10));
         addCTFFlag(team2.getTeamName(), new SerializedLocation(-34, 76, 54));
-        setTimeLockTime(11000);
-        setMatchDuration(600);
+        time_lock_time( 11000 );
+        match_duration( 600 );
     }
 
     protected void readySpawns() {
         addTeamSpawn(team1, new RadialSpawnPoint(main.rng, -5.5, 68, 5.5, 45, 0, 3, 3));
         addTeamSpawn(team2, new RadialSpawnPoint(main.rng, -52.5, 68, 58.5, 180, 0, 7, 1));
-        setSpectatorSpawn(new RadialSpawnPoint(main.rng, -47.5, 74, 5.5, 315, 0, 1, 1));
+        spectator_spawn_position( new RadialSpawnPoint( main.rng, -47.5, 74, 5.5, 315, 0, 1, 1) );
     }
 
     @Override
