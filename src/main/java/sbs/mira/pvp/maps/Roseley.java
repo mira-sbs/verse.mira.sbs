@@ -4,8 +4,8 @@ import sbs.mira.pvp.framework.MiraPlayer;
 import sbs.mira.pvp.framework.game.WarTeam;
 import sbs.mira.pvp.framework.stored.SerializedLocation;
 import sbs.mira.pvp.game.Gamemode;
-import sbs.mira.pvp.model.map.MiraMapModelConcrete;
-import sbs.mira.pvp.game.util.RadialSpawnPoint;
+import sbs.mira.core.model.map.MiraMapModelConcrete;
+import sbs.mira.core.model.map.PositionPlane;
 import sbs.mira.pvp.game.util.SpawnArea;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -51,9 +51,9 @@ public class Roseley extends MiraMapModelConcrete
     }
 
     protected void readySpawns() {
-        addTeamSpawn(team1, new RadialSpawnPoint(main.rng, -5.5, 68, 5.5, 45, 0, 3, 3));
-        addTeamSpawn(team2, new RadialSpawnPoint(main.rng, -52.5, 68, 58.5, 180, 0, 7, 1));
-        spectator_spawn_position( new RadialSpawnPoint( main.rng, -47.5, 74, 5.5, 315, 0, 1, 1) );
+        addTeamSpawn(team1, new PositionPlane( main.rng, -5.5, 68, 5.5, 45, 0, 3, 3) );
+        addTeamSpawn(team2, new PositionPlane( main.rng, -52.5, 68, 58.5, 180, 0, 7, 1) );
+        spectator_spawn_position( new PositionPlane( main.rng, -47.5, 74, 5.5, 315, 0, 1, 1) );
     }
 
     @Override

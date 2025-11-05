@@ -4,7 +4,7 @@ import sbs.mira.pvp.framework.MiraPlayer;
 import sbs.mira.pvp.framework.game.WarTeam;
 import sbs.mira.pvp.framework.stored.SerializedLocation;
 import sbs.mira.pvp.game.Gamemode;
-import sbs.mira.pvp.model.map.MiraMapModelConcrete;
+import sbs.mira.core.model.map.MiraMapModelConcrete;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;

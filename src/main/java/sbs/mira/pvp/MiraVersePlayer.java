@@ -5,7 +5,7 @@ import org.bukkit.craftbukkit.v1_21_R6.entity.CraftPlayer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.model.MiraPlayerModel;
-import sbs.mira.pvp.model.map.MiraTeamModel;
+import sbs.mira.core.model.map.MiraTeamModel;
 import sbs.mira.pvp.stats.WarStats;
 
 /**
@@ -192,14 +192,5 @@ class MiraVersePlayer
     
     ChatColor teamColor = has_team( ) ? team( ).colour( ) : ChatColor.LIGHT_PURPLE;
     crafter( ).setDisplayName( prefix + teamColor + name( ) + ChatColor.WHITE );
-  }
-  
-  /**
-   * @see org.bukkit.entity.Player#sendMessage(String)
-   */
-  public
-  void messages( @NotNull String content )
-  {
-    this.crafter( ).sendMessage( content );
   }
 }

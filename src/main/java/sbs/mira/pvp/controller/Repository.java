@@ -4,10 +4,10 @@ import sbs.mira.pvp.MiraVerseModel;
 import sbs.mira.pvp.framework.util.WarCache;
 import sbs.mira.pvp.framework.MiraPulse;
 import sbs.mira.pvp.game.Gamemode;
-import sbs.mira.pvp.model.map.MiraMapModelConcrete;
+import sbs.mira.core.model.map.MiraMapModelConcrete;
 import au.edu.swin.war.game.modes.*;
 import au.edu.swin.war.maps.*;
-import sbs.mira.pvp.game.modes.*;
+import sbs.mira.pvp.game.mode.*;
 import sbs.mira.pvp.maps.*;
 
 /**
@@ -39,7 +39,7 @@ public class Repository
     public void loadGamemodes() {
         // Hard-load gamemodes via class reference.
         // Reflections isn't really needed since it's a War-only thing.
-        loadGamemode(TDM.class);
+        loadGamemode( MiraTeamDeathMatch.class );
         loadGamemode(KoTH.class);
         loadGamemode(CTF.class);
         loadGamemode(LMS.class);

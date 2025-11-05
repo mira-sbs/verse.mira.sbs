@@ -14,8 +14,8 @@ import sbs.mira.core.model.MiraConfigurationModel;
 import sbs.mira.core.model.MiraPluginModel;
 import sbs.mira.pvp.controller.DatabaseController;
 import sbs.mira.pvp.controller.Repository;
-import sbs.mira.pvp.model.MiraRespawnModel;
-import sbs.mira.pvp.model.MiraLobbyModel;
+import sbs.mira.core.model.MiraRespawnModel;
+import sbs.mira.core.model.MiraLobbyModel;
 import sbs.mira.pvp.stats.WarStats;
 import sbs.mira.pvp.util.EntityUtility;
 

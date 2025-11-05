@@ -8,7 +8,7 @@ import sbs.mira.pvp.framework.event.MatchPlayerDeathEvent;
 import sbs.mira.pvp.framework.MiraPulse;
 import sbs.mira.pvp.framework.util.WarMatch;
 import sbs.mira.pvp.framework.MiraModule;
-import sbs.mira.pvp.model.map.MiraMapModelConcrete;
+import sbs.mira.core.model.map.MiraMapModelConcrete;
 import sbs.mira.pvp.stats.WarStats;
 import com.vexsoftware.votifier.model.VotifierEvent;
 import org.bukkit.*;

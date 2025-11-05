@@ -1,4 +1,4 @@
-package sbs.mira.pvp.game.modes;
+package sbs.mira.pvp.game.mode;
 
 import sbs.mira.pvp.framework.MiraPlayer;
 import sbs.mira.pvp.framework.game.WarTeam;

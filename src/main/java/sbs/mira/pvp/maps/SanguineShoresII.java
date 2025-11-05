@@ -4,8 +4,8 @@ import sbs.mira.pvp.framework.MiraPlayer;
 import sbs.mira.pvp.framework.game.WarTeam;
 import sbs.mira.pvp.framework.stored.SerializedLocation;
 import sbs.mira.pvp.game.Gamemode;
-import sbs.mira.pvp.model.map.MiraMapModelConcrete;
-import sbs.mira.pvp.game.util.RadialSpawnPoint;
+import sbs.mira.core.model.map.MiraMapModelConcrete;
+import sbs.mira.core.model.map.PositionPlane;
 import sbs.mira.pvp.game.util.SpawnArea;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -43,9 +43,9 @@ public class SanguineShoresII extends MiraMapModelConcrete
     }
 
     protected void readySpawns() {
-        addTeamSpawn(team1, new RadialSpawnPoint(main.rng, 93.5, 57, 0.5, 90, 0, 4, 4));
-        addTeamSpawn(team2, new RadialSpawnPoint(main.rng, -46.5, 57, -22.5, 270, 0, 4, 4));
-        spectator_spawn_position( new RadialSpawnPoint( main.rng, 24, 55, -53.5, 0, 0, 2, 1) );
+        addTeamSpawn(team1, new PositionPlane( main.rng, 93.5, 57, 0.5, 90, 0, 4, 4) );
+        addTeamSpawn(team2, new PositionPlane( main.rng, -46.5, 57, -22.5, 270, 0, 4, 4) );
+        spectator_spawn_position( new PositionPlane( main.rng, 24, 55, -53.5, 0, 0, 2, 1) );
     }
 
     @Override

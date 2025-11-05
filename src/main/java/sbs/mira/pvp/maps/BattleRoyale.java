@@ -4,8 +4,8 @@ import sbs.mira.pvp.framework.MiraPlayer;
 import sbs.mira.pvp.framework.game.WarTeam;
 import sbs.mira.pvp.framework.stored.SerializedLocation;
 import sbs.mira.pvp.game.Gamemode;
-import sbs.mira.pvp.model.map.MiraMapModelConcrete;
-import sbs.mira.pvp.game.util.RadialSpawnPoint;
+import sbs.mira.core.model.map.MiraMapModelConcrete;
+import sbs.mira.core.model.map.PositionPlane;
 import sbs.mira.pvp.game.util.SpawnArea;
 import net.minecraft.server.v1_12_R1.EntityLiving;
 import net.minecraft.server.v1_12_R1.EntityTNTPrimed;
@@ -66,7 +66,7 @@ public class BattleRoyale extends MiraMapModelConcrete
         addTeamSpawn(team1, new SerializedLocation(-28.5, 85, 25.5, 135, 0));
         addTeamSpawn(team2, new SerializedLocation(-33.5, 85, -25.5, 315, 0));
         addTeamSpawn(team2, new SerializedLocation(-28.5, 85, -25.5, 45, 0));
-        spectator_spawn_position( new RadialSpawnPoint( main.rng, -2.5, 84, 0.5, 90, 0, 0, 5) );
+        spectator_spawn_position( new PositionPlane( main.rng, -2.5, 84, 0.5, 90, 0, 0, 5) );
     }
 
     @Override

@@ -2,20 +2,20 @@ package sbs.mira.pvp.maps;
 
 import org.bukkit.ChatColor;
 import org.jetbrains.annotations.NotNull;
-import sbs.mira.core.model.Position;
+import sbs.mira.core.model.map.MiraMapModel;
+import sbs.mira.core.model.map.MiraTeamModel;
+import sbs.mira.core.model.map.Position;
+import sbs.mira.core.model.map.PositionPlane;
+import sbs.mira.core.model.match.MiraGameModeType;
 import sbs.mira.pvp.MiraVersePlayer;
 import sbs.mira.pvp.MiraVersePulse;
-import sbs.mira.pvp.game.util.RadialSpawnPoint;
-import sbs.mira.pvp.model.map.MiraMapModel;
-import sbs.mira.pvp.model.map.MiraTeamModel;
-import sbs.mira.pvp.model.match.MiraGameModeType;
 
 public
 class Battlement
   extends MiraMapModel
 {
-  private static final String BLUE_TEAM = "blue";
-  private static final String RED_TEAM = "red";
+  private static final String TEAM_BLUE = "blue";
+  private static final String TEAM_RED = "red";
   
   public
   Battlement( @NotNull MiraVersePulse pulse )
@@ -29,8 +29,8 @@ class Battlement
     this.allow_game_mode_type( MiraGameModeType.LAST_TEAM_STANDING );
     this.allow_game_mode_type( MiraGameModeType.LIFE_POOL );
     
-    this.team( new MiraTeamModel( BLUE_TEAM, "Blue Team", ChatColor.BLUE, 24 ) );
-    this.team( new MiraTeamModel( RED_TEAM, "Red Team", ChatColor.RED, 24 ) );
+    this.team( new MiraTeamModel( TEAM_BLUE, "Blue Team", ChatColor.BLUE, 24 ) );
+    this.team( new MiraTeamModel( TEAM_RED, "Red Team", ChatColor.RED, 24 ) );
   }
   
   
@@ -48,39 +48,32 @@ class Battlement
   protected
   void define_spawns( )
   {
-    this.team_spawn( BLUE_TEAM, new Position( -15.5, 70, 4.5, 225, 0 ) );
-    this.team_spawn( BLUE_TEAM, new Position( -23.5, 70, 4.5, 225, 0 ) );
-    this.team_spawn( BLUE_TEAM, new Position( -31.5, 70, 4.5, 225, 0 ) );
-    this.team_spawn( BLUE_TEAM, new Position( -39.5, 70, 4.5, 225, 0 ) );
-    this.team_spawn( BLUE_TEAM, new Position( -15.5, 70, 12.5, 225, 0 ) );
-    this.team_spawn( BLUE_TEAM, new Position( -15.5, 70, 20.5, 225, 0 ) );
-    this.team_spawn( BLUE_TEAM, new Position( -15.5, 70, 28.5, 225, 0 ) );
-    this.team_spawn( BLUE_TEAM, new Position( -23.5, 74, 12.5, 225, 0 ) );
-    this.team_spawn( BLUE_TEAM, new Position( -31.5, 74, 12.5, 225, 0 ) );
-    this.team_spawn( BLUE_TEAM, new Position( -23.5, 74, 20.5, 225, 0 ) );
-    this.team_spawn( BLUE_TEAM, new Position( -27.5, 78, 16.5, 225, 0 ) );
+    this.team_spawn( TEAM_BLUE, new Position( -15.5, 70, 4.5, 225, 0 ) );
+    this.team_spawn( TEAM_BLUE, new Position( -23.5, 70, 4.5, 225, 0 ) );
+    this.team_spawn( TEAM_BLUE, new Position( -31.5, 70, 4.5, 225, 0 ) );
+    this.team_spawn( TEAM_BLUE, new Position( -39.5, 70, 4.5, 225, 0 ) );
+    this.team_spawn( TEAM_BLUE, new Position( -15.5, 70, 12.5, 225, 0 ) );
+    this.team_spawn( TEAM_BLUE, new Position( -15.5, 70, 20.5, 225, 0 ) );
+    this.team_spawn( TEAM_BLUE, new Position( -15.5, 70, 28.5, 225, 0 ) );
+    this.team_spawn( TEAM_BLUE, new Position( -23.5, 74, 12.5, 225, 0 ) );
+    this.team_spawn( TEAM_BLUE, new Position( -31.5, 74, 12.5, 225, 0 ) );
+    this.team_spawn( TEAM_BLUE, new Position( -23.5, 74, 20.5, 225, 0 ) );
+    this.team_spawn( TEAM_BLUE, new Position( -27.5, 78, 16.5, 225, 0 ) );
     
-    this.team_spawn( RED_TEAM, new Position( 11.5, 70, -13.5, 45, 0 ) );
-    this.team_spawn( RED_TEAM, new Position( 19.5, 70, -13.5, 45, 0 ) );
-    this.team_spawn( RED_TEAM, new Position( 27.5, 70, -13.5, 45, 0 ) );
-    this.team_spawn( RED_TEAM, new Position( 35.5, 70, -13.5, 45, 0 ) );
-    this.team_spawn( RED_TEAM, new Position( 11.5, 70, -21.5, 45, 0 ) );
-    this.team_spawn( RED_TEAM, new Position( 11.5, 70, -29.5, 45, 0 ) );
-    this.team_spawn( RED_TEAM, new Position( 11.5, 70, -37.5, 45, 0 ) );
-    this.team_spawn( RED_TEAM, new Position( 19.5, 74, -21.5, 45, 0 ) );
-    this.team_spawn( RED_TEAM, new Position( 27.5, 74, -21.5, 45, 0 ) );
-    this.team_spawn( RED_TEAM, new Position( 19.5, 74, -29.5, 45, 0 ) );
-    this.team_spawn( RED_TEAM, new Position( 23.5, 78, -25.5, 45, 0 ) );
+    this.team_spawn( TEAM_RED, new Position( 11.5, 70, -13.5, 45, 0 ) );
+    this.team_spawn( TEAM_RED, new Position( 19.5, 70, -13.5, 45, 0 ) );
+    this.team_spawn( TEAM_RED, new Position( 27.5, 70, -13.5, 45, 0 ) );
+    this.team_spawn( TEAM_RED, new Position( 35.5, 70, -13.5, 45, 0 ) );
+    this.team_spawn( TEAM_RED, new Position( 11.5, 70, -21.5, 45, 0 ) );
+    this.team_spawn( TEAM_RED, new Position( 11.5, 70, -29.5, 45, 0 ) );
+    this.team_spawn( TEAM_RED, new Position( 11.5, 70, -37.5, 45, 0 ) );
+    this.team_spawn( TEAM_RED, new Position( 19.5, 74, -21.5, 45, 0 ) );
+    this.team_spawn( TEAM_RED, new Position( 27.5, 74, -21.5, 45, 0 ) );
+    this.team_spawn( TEAM_RED, new Position( 19.5, 74, -29.5, 45, 0 ) );
+    this.team_spawn( TEAM_RED, new Position( 23.5, 78, -25.5, 45, 0 ) );
     
-    this.spectator_spawn_position( new RadialSpawnPoint(
-      this.pulse( ).model( ).rng,
-      13.5,
-      93,
-      17.5,
-      135,
-      25,
-      3,
-      3 ) );
+    this.spectator_spawn_position =
+      new PositionPlane( 13.5, 93, 17.5, 135, 25, 3, 3, this.pulse( ).model( ).rng );
   }
   
   @Override
