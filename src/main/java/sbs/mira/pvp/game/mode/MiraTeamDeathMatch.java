@@ -2,16 +2,19 @@ package sbs.mira.pvp.game.mode;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.scoreboard.Criteria;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
+import org.jetbrains.annotations.NotNull;
+import sbs.mira.core.MiraPulse;
+import sbs.mira.core.model.MiraPlayerModel;
 import sbs.mira.core.model.map.MiraTeamModel;
 import sbs.mira.core.model.match.MiraGameModeModel;
+import sbs.mira.pvp.MiraVersePlayer;
 import sbs.mira.pvp.framework.MiraPlayer;
 import sbs.mira.pvp.framework.game.WarTeam;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
+import java.util.*;
 
 /**
  * implementation of the team death match (tdm) game mode.
@@ -26,46 +29,81 @@ public
 class MiraTeamDeathMatch
   extends MiraGameModeModel
 {
-  
-  private final HashMap<String, Integer> kills = new HashMap<>( );
+  private final Map<UUID, Integer> player_kill_streaks = new HashMap<>( );
   
   public
-  void reset( )
+  MiraTeamDeathMatch( MiraPulse<?, ?> pulse )
   {
-    kills.clear( );
+    super( pulse );
+    
+    this.label( "tdm" );
+    this.display_name( "Team Death Match" );
+    this.grammar( "a" );
+    this.description_offense( "eliminate enemy team members to score points - most points wins" );
+    this.description_defense( "protect yourself and your team members from being eliminated" );
   }
   
   public
-  void initialize( )
+  void activate( @NotNull List<MiraTeamModel> teams )
   {
-    for ( MiraTeamModel team : this.mat( ) )
+    Objective objective = this.scoreboard( ).registerNewObjective(
+      this.label( ),
+      Criteria.DUMMY,
+      this.display_name( ) );
+    objective.setDisplaySlot( DisplaySlot.SIDEBAR );
+    
+    this.refresh_scoreboard( );
+    
+    for ( Player player : Bukkit.getOnlinePlayers( ) )
     {
-      kills.put( team.getTeamName( ), 0 );
+      player.setScoreboard( this.scoreboard( ) );
     }
+  }
+  
+  @Override
+  public
+  void refresh_scoreboard( )
+  {
+    Objective obj = this.scoreboard( ).getObjective( DisplaySlot.SIDEBAR );
     
-    autoAssign( );
-    
-    Objective obj = s( ).registerNewObjective( "gm", "dummy" );
+    String dp = map( ).getMapName( ) + " (" + getName( ) + ")";
+    if ( dp.length( ) > 32 )
+    {
+      dp = dp.substring( 0, 32 );
+    }
+    obj.setDisplayName( dp );
     obj.setDisplaySlot( DisplaySlot.SIDEBAR );
-    updateScoreboard( );
     
-    for ( Player online : Bukkit.getOnlinePlayers( ) )
+    obj.getScore( " " ).setScore( kills.size( ) + 2 );
+    obj.getScore( "  Points" ).setScore( kills.size( ) + 1 );
+    
+    Iterator<WarTeam> iterator = getTeams( ).iterator( );
+    for ( int i = 0; i < kills.size( ); i++ )
     {
-      online.setScoreboard( s( ) );
+      WarTeam target = iterator.next( );
+      obj.getScore( target.getTeamColor( ) + "    " + kills.get( target.getTeamName( ) ) ).setScore(
+        i + 1 );
+      s( ).resetScores( target.getTeamColor( ) +
+                        "    " +
+                        ( kills.get( target.getTeamName( ) ) - 1 ) );
     }
+    obj.getScore( "  " ).setScore( 0 );
   }
   
-  public
-  void tick( )
+  @Override
+  protected
+  void determine_winner( )
   {
+  
   }
   
+  @Override
   public
-  void onKill( MiraPlayer killed, MiraPlayer killer )
+  void on_kill( MiraVersePlayer killed, MiraVersePlayer killer )
   {
-    kills.put(
+    player_kill_streaks.put(
       killer.getCurrentTeam( ).getTeamName( ),
-      kills.get( killer.getCurrentTeam( ).getTeamName( ) ) + 1 );
+      player_kill_streaks.getOrDefault( killer.getCurrentTeam( ).getTeamName( ) ) + 1, 1 );
     updateScoreboard( );
   }
   
@@ -76,7 +114,9 @@ class MiraTeamDeathMatch
     {
       if ( !awarded.getTeamName( ).equals( killed.getCurrentTeam( ).getTeamName( ) ) )
       {
-        kills.put( awarded.getTeamName( ), kills.get( awarded.getTeamName( ) ) + 1 );
+        player_kill_streaks.put(
+          awarded.getTeamName( ),
+          player_kill_streaks.get( awarded.getTeamName( ) ) + 1 );
       }
     }
     updateScoreboard( );
@@ -90,7 +130,7 @@ class MiraTeamDeathMatch
     
     for ( WarTeam team : getTeams( ) )
     {
-      int count = kills.get( team.getTeamName( ) );
+      int count = player_kill_streaks.get( team.getTeamName( ) );
       if ( count == highest )
       {
         winners.add( team );
@@ -133,104 +173,5 @@ class MiraTeamDeathMatch
   String getGrammar( )
   {
     return "a";
-  }
-  
-  public
-  void onLeave( MiraPlayer left )
-  {
-  }
-  
-  public
-  void updateScoreboard( )
-  {
-    Objective obj = s( ).getObjective( DisplaySlot.SIDEBAR );
-    
-    String dp = map( ).getMapName( ) + " (" + getName( ) + ")";
-    if ( dp.length( ) > 32 )
-    {
-      dp = dp.substring( 0, 32 );
-    }
-    obj.setDisplayName( dp );
-    obj.setDisplaySlot( DisplaySlot.SIDEBAR );
-    
-    obj.getScore( " " ).setScore( kills.size( ) + 2 );
-    obj.getScore( "  Points" ).setScore( kills.size( ) + 1 );
-    
-    Iterator<WarTeam> iterator = getTeams( ).iterator( );
-    for ( int i = 0; i < kills.size( ); i++ )
-    {
-      WarTeam target = iterator.next( );
-      obj.getScore( target.getTeamColor( ) + "    " + kills.get( target.getTeamName( ) ) ).setScore(
-        i + 1 );
-      s( ).resetScores( target.getTeamColor( ) +
-                        "    " +
-                        ( kills.get( target.getTeamName( ) ) - 1 ) );
-    }
-    obj.getScore( "  " ).setScore( 0 );
-  }
-  
-  @Override
-  public
-  HashMap<String, Object> getExtraTeamData( WarTeam team )
-  {
-    HashMap<String, Object> extra = new HashMap<>( );
-    extra.put( "Points", kills.get( team.getTeamName( ) ) );
-    return extra;
-  }
-  
-  @Override
-  public
-  void breathe( )
-  {
-  
-  }
-  
-  @Override
-  public
-  void refresh_scoreboard( )
-  {
-  
-  }
-  
-  @Override
-  public
-  String label( )
-  {
-    return "tdm";
-  }
-  
-  @Override
-  public
-  String display_name( )
-  {
-    return "Team Death Match";
-  }
-  
-  @Override
-  public
-  String objective_description_offense( )
-  {
-    return "eliminate enemy team members";
-  }
-  
-  @Override
-  public
-  String objective_description_defense( )
-  {
-    return "protect yourself and your team members from being eliminated";
-  }
-  
-  @Override
-  public
-  String grammar( )
-  {
-    return "a";
-  }
-  
-  @Override
-  protected
-  void determine_winner( )
-  {
-  
   }
 }
