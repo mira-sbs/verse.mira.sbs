@@ -1,0 +1,27 @@
+################################################################################
+# [mira~may i reflect again?]
+# [v1.0.0-witness]
+# global (default!) configuration file.
+################################################################################
+mira:
+  file_paths:
+    world_repository: "/home/founders/repo/maps"
+
+
+webstats:
+  enable: true
+  action: "www.somescript.com/dothis.php"
+  secret: "abcdef12345"
+  position: 0
+settings:
+  maps_repo: "/home/founders/repo/maps"
+  voteTime: 30
+  cycleTime: 30
+  startTime: 30
+database:
+  enabled: true
+  username: "jj"
+  password: ""
+  database: "mira"
+  hostname: ""
+  port: 5432
