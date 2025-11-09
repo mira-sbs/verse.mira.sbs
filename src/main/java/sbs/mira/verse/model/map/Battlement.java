@@ -10,8 +10,8 @@ import org.jetbrains.annotations.NotNull;
 import sbs.mira.core.model.MiraPlayerModel;
 import sbs.mira.core.model.map.MiraMapModel;
 import sbs.mira.core.model.map.MiraTeamModel;
-import sbs.mira.core.model.map.objective.MiraObjectiveBuildMonument;
-import sbs.mira.core.model.map.objective.MiraObjectiveCaptureFlag;
+import sbs.mira.core.model.map.objective.standard.MiraObjectiveBuildMonument;
+import sbs.mira.core.model.map.objective.standard.MiraObjectiveCapturableFlagBlock;
 import sbs.mira.core.model.match.MiraGameModeType;
 import sbs.mira.core.model.match.MiraMatchModel;
 import sbs.mira.core.model.utility.Position;
@@ -25,8 +25,13 @@ public
 class Battlement
   extends MiraMapModel<MiraVersePulse>
 {
-  private static final String TEAM_BLUE = "blue";
-  private static final String TEAM_RED = "red";
+  @NotNull
+  private final MiraTeamModel TEAM_BLUE =
+    new MiraTeamModel( "blue", "Blue Team", ChatColor.BLUE, 24 );
+  
+  @NotNull
+  private final MiraTeamModel TEAM_RED =
+    new MiraTeamModel( "red", "Red Team", ChatColor.RED, 24 );
   
   public
   Battlement( @NotNull MiraVersePulse pulse, @NotNull MiraMatchModel<?> match )
@@ -40,8 +45,8 @@ class Battlement
     this.allow_game_mode_type( MiraGameModeType.LAST_TEAM_STANDING );
     this.allow_game_mode_type( MiraGameModeType.LIFE_POOL );
     
-    this.team( new MiraTeamModel( TEAM_BLUE, "Blue Team", ChatColor.BLUE, 24 ) );
-    this.team( new MiraTeamModel( TEAM_RED, "Red Team", ChatColor.RED, 24 ) );
+    this.team( TEAM_BLUE );
+    this.team( TEAM_RED );
   }
   
   
@@ -64,26 +69,26 @@ class Battlement
       this.pulse( ),
       new MiraObjectiveBuildMonument<>(
         this.pulse( ),
+        "Blue Monument",
         TEAM_BLUE,
-        ChatColor.BLUE,
         Material.BLUE_WOOL,
         new Region( new Position( 0, 0, 0 ), new Position( 0, 0, 0 ) ) ),
       new MiraObjectiveBuildMonument<>(
         this.pulse( ),
+        "Red Monument",
         TEAM_RED,
-        ChatColor.RED,
         Material.RED_WOOL,
         new Region( new Position( 0, 0, 0 ), new Position( 0, 0, 0 ) ) ),
-      new MiraObjectiveCaptureFlag<>(
+      new MiraObjectiveCapturableFlagBlock<>(
         this.pulse( ),
+        "Blue Flag",
         TEAM_BLUE,
-        ChatColor.BLUE,
         Material.BLUE_WOOL,
         new Position( -31, 84, 20 ) ),
-      new MiraObjectiveCaptureFlag<>(
+      new MiraObjectiveCapturableFlagBlock<>(
         this.pulse( ),
+        "Red Flag",
         TEAM_RED,
-        ChatColor.RED,
         Material.RED_WOOL,
         new Position( 27, 84, -29 ) )
     ) );

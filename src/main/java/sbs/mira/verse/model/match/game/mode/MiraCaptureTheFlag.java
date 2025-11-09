@@ -3,8 +3,7 @@ package sbs.mira.verse.model.match.game.mode;
 import org.bukkit.Bukkit;
 import org.jetbrains.annotations.NotNull;
 import sbs.mira.core.model.map.MiraObjective;
-import sbs.mira.core.model.map.MiraTeamModel;
-import sbs.mira.core.model.map.objective.MiraObjectiveCapturableFlagBlock;
+import sbs.mira.core.model.map.objective.standard.MiraObjectiveCapturableFlagBlock;
 import sbs.mira.core.model.match.MiraGameModeModel;
 import sbs.mira.core.model.match.MiraGameModeType;
 import sbs.mira.core.model.match.MiraMatch;
@@ -12,18 +11,15 @@ import sbs.mira.core.utility.MiraEntityUtility;
 import sbs.mira.verse.MiraVersePulse;
 import sbs.mira.verse.model.map.objective.MiraObjectiveCaptureAndBuildFlag;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * an extension to gamemode to implement ctf.
+ * implementation of the capture the flag (ctf) game mode.
  * created on 2017-04-24.
  *
- * @author jj.mira.sbs
- * @author jd.mira.sbs
+ * @author jj stephen
+ * @author jd rose
  * @version 1.0.1
  * @since 1.0.0
  */
@@ -33,9 +29,8 @@ class MiraCaptureTheFlag
 {
   private final static int FIREWORK_SPAWN_INTERVAL = 4;
   
-  private final List<MiraObjectiveCaptureAndBuildFlag<?>> objectives;
   @NotNull
-  private final Map<String, Integer> team_points;
+  private final List<MiraObjectiveCaptureAndBuildFlag<?>> objectives;
   private int firework_timer;
   private boolean enabled_quick_steal;
   
@@ -55,7 +50,6 @@ class MiraCaptureTheFlag
         .filter( ( objective )->objective instanceof MiraObjectiveCaptureAndBuildFlag<?> )
         .map( ( objective )->( MiraObjectiveCaptureAndBuildFlag<?> ) objective )
         .collect( Collectors.toUnmodifiableList( ) );
-    this.team_points = new HashMap<>( );
     this.firework_timer = FIREWORK_SPAWN_INTERVAL;
     this.enabled_quick_steal = false;
   }
@@ -66,13 +60,9 @@ class MiraCaptureTheFlag
   {
     super.activate( );
     
-    for ( MiraTeamModel team : this.match.map( ).teams( ) )
-    {
-      this.team_points.put( team.label( ), 0 );
-    }
-    
     this.scoreboard.initialise( ( this.objectives.size( ) * 4 ) + 4 );
     this.update_scoreboard( );
+    
     this.objectives.forEach( ( objective )->objective.activate( this.match.world( ) ) );
   }
   
@@ -120,13 +110,6 @@ class MiraCaptureTheFlag
   
   @Override
   protected
-  void determine_winner( )
-  {
-  
-  }
-  
-  @Override
-  protected
   void task_timer_tick( )
   {
     if ( this.firework_timer-- == 0 )
@@ -138,12 +121,12 @@ class MiraCaptureTheFlag
         MiraObjectiveCapturableFlagBlock<?> team_1_flag = objective.team_1_flag( );
         MiraEntityUtility.spawn_firework(
           team_1_flag.firework_location( ),
-          team_1_flag.defending_team( ).color( ) );
+          team_1_flag.team( ).color( ) );
         
         MiraObjectiveCapturableFlagBlock<?> team_2_flag = objective.team_2_flag( );
         MiraEntityUtility.spawn_firework(
           team_2_flag.firework_location( ),
-          team_2_flag.defending_team( ).color( ) );
+          team_2_flag.team( ).color( ) );
       }
     }
     if ( !this.enabled_quick_steal )
@@ -161,47 +144,5 @@ class MiraCaptureTheFlag
         Bukkit.broadcastMessage( "quick steal has been enabled - players can click to steal flags!" );
       }
     }
-  }
-  
-  public
-  void decideWinner( )
-  {
-    int highest = -1;
-    ArrayList<WarTeam> winners = new ArrayList<>( );
-    
-    for ( WarTeam team : getTeams( ) )
-    {
-      int count = info.get( team.getTeamName( ) ).getCaptures( );
-      if ( count == highest )
-      {
-        winners.add( team );
-      }
-      else if ( count > highest )
-      {
-        highest = count;
-        winners.clear( );
-        winners.add( team );
-      }
-    }
-    broadcastWinner( winners, "captures", highest );
-  }
-  
-  /**
-   * check if a win has been attained after a capture.
-   * if there is a win, onEnd should be called.
-   *
-   * @return whether or not any team has won.
-   */
-  private
-  boolean checkWin( )
-  {
-    for ( CTFInfo inf : info.values( ) )
-    {
-      if ( inf.getCaptures( ) >= ( Integer ) map( ).attr( ).get( "captureRequirement" ) )
-      {
-        return true;
-      }
-    }
-    return false;
   }
 }

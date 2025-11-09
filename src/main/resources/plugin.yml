@@ -1,5 +1,8 @@
-name: pvp.mira.sbs
-main: sbs.mira.verse.Main
-author: [Kawi]
-depend: [Skytopia]
-version: 1.1
+name: verse.mira.sbs
+description: 'mira''s kd/r is a stone cold reflection.'
+version: '1.0.1'
+api-version: 1.21.10
+main: sbs.mira.verse.MiraVersePlugin
+author: [ kawi ]
+website: mira.sbs
+load: POSTWORLD
