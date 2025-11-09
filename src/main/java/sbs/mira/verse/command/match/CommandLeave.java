@@ -19,7 +19,7 @@ class CommandLeave
    *
    * @param pulse reference to mira.
    */
-  protected
+  public
   CommandLeave( @NotNull MiraVersePulse pulse )
   {
     super( pulse );

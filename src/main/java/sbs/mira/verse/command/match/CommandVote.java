@@ -20,7 +20,7 @@ class CommandVote
    *
    * @param pulse reference to mira.
    */
-  protected
+  public
   CommandVote( @NotNull MiraVersePulse pulse )
   {
     super( pulse );

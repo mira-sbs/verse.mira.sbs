@@ -24,7 +24,7 @@ class CommandJoin
    *
    * @param pulse reference to mira.
    */
-  protected
+  public
   CommandJoin( @NotNull MiraVersePulse pulse )
   {
     super( pulse );

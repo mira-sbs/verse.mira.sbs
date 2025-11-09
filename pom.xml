@@ -18,8 +18,8 @@
   <version>1.0.1</version>
   <packaging>jar</packaging>
 
-  <name>verse.mira.sbs</name>
-  <description>custom minecraft player competitions with soul.</description>
+  <name>mira-verse</name>
+  <description>custom minecraft player competition with soul.</description>
   <url>https://verse.mira.sbs/</url>
 
   <properties>

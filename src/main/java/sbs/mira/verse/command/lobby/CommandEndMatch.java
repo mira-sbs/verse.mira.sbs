@@ -17,7 +17,7 @@ class CommandEndMatch
    *
    * @param pulse tbd.
    */
-  protected
+  public
   CommandEndMatch( @NotNull MiraVersePulse pulse )
   {
     super( pulse );

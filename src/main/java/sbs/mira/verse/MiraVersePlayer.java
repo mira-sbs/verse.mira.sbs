@@ -3,7 +3,6 @@ package sbs.mira.verse;
 import org.bukkit.ChatColor;
 import org.bukkit.craftbukkit.v1_21_R6.entity.CraftPlayer;
 import sbs.mira.core.model.MiraPlayerModel;
-import sbs.mira.verse.stats.WarStats;
 
 /**
  * [ruh roh raggy...]
@@ -20,26 +19,12 @@ class MiraVersePlayer
   extends MiraPlayerModel<MiraVersePulse>
 {
   
-  /**
-   * @see sbs.mira.verse.stats.WarStats
-   */
-  private WarStats stats;
-  
   public
   MiraVersePlayer( CraftPlayer player, MiraVersePulse pulse )
   {
     super( player, pulse );
     
     toggle_visibilities( );
-  }
-  
-  /**
-   * @see #stats
-   */
-  public
-  WarStats stats( )
-  {
-    return stats;
   }
   
   /**

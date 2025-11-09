@@ -17,7 +17,7 @@ class CommandRotation
    *
    * @param pulse tbd.
    */
-  protected
+  public
   CommandRotation( @NotNull MiraVersePulse pulse )
   {
     super( pulse );

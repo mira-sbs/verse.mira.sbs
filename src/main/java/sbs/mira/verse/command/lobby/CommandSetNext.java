@@ -19,7 +19,7 @@ class CommandSetNext
    *
    * @param pulse tbd.
    */
-  protected
+  public
   CommandSetNext( @NotNull MiraVersePulse pulse )
   {
     super( pulse );
