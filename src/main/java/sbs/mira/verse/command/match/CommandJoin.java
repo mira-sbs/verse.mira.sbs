@@ -3,7 +3,6 @@ package sbs.mira.verse.command.match;
 
 import app.ashcon.intake.Command;
 import app.ashcon.intake.parametric.annotation.Switch;
-import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -42,7 +41,7 @@ class CommandJoin
   {
     if ( !( sender instanceof Player ) )
     {
-      sender.sendMessage( ChatColor.RED + "console cannot participate in-game. :(" );
+      sender.sendMessage( this.pulse( ).model( ).message( "error.non_player" ) );
       
       return;
     }
@@ -52,56 +51,58 @@ class CommandJoin
     
     if ( mira_player.joined( ) )
     {
-      sender.sendMessage( ChatColor.YELLOW + "you are already marked as joined!" );
+      sender.sendMessage( this.pulse( ).model( ).message( "match.team.join.already_joined" ) );
       
       return;
     }
     
     MiraMatchState match_state = this.pulse( ).model( ).lobby( ).match( ).state( );
     
-    if ( match_state == MiraMatchState.PRE_GAME )
+    switch ( match_state )
     {
-      mira_player.joined( true );
-      
-      sender.sendMessage( ChatColor.GREEN + "you will automatically join the next round." );
-    }
-    else if ( match_state == MiraMatchState.GAME )
-    {
-      @Nullable MiraTeamModel preferred_team = null;
-      
-      if ( preference != null )
+      case PRE_GAME ->
       {
-        if ( !sender.hasPermission( "mira.team.preference" ) )
-        {
-          sender.sendMessage( ChatColor.RED +
-                              "you do not have permission to choose a preferred team!" );
-          
-          return;
-        }
+        mira_player.joined( true );
         
-        for ( MiraTeamModel mira_team : this.pulse( ).model( ).lobby( ).match( ).map( ).teams( ) )
+        sender.sendMessage( this.pulse( ).model( ).message( "match.team.join.waiting" ) );
+      }
+      case GAME ->
+      {
+        @Nullable MiraTeamModel preferred_team = null;
+        
+        if ( preference != null )
         {
-          if ( mira_team.display_name( ).toLowerCase( ).startsWith( preference.toLowerCase( ) ) )
+          if ( !sender.hasPermission( "mira.team.preference" ) )
           {
-            preferred_team = mira_team;
+            sender.sendMessage( this.pulse( ).model( ).message(
+              "match.team.preference.no_permission" ) );
             
-            break;
+            return;
+          }
+          
+          for ( MiraTeamModel mira_team : this.pulse( ).model( ).lobby( ).match( ).map( ).teams( ) )
+          {
+            if ( mira_team.display_name( ).toLowerCase( ).startsWith( preference.toLowerCase( ) ) )
+            {
+              preferred_team = mira_team;
+              
+              break;
+            }
+          }
+          
+          if ( preferred_team == null )
+          {
+            sender.sendMessage( this.pulse( ).model( ).message( "match.team.preference.no_match" ) );
+            
+            return;
           }
         }
         
-        if ( preferred_team == null )
-        {
-          sender.sendMessage( ChatColor.RED + "that team does not exist." );
-          
-          return;
-        }
+        mira_player.joined( true );
+        
+        this.pulse( ).model( ).lobby( ).match( ).try_join_team( mira_player, preferred_team );
       }
-      
-      this.pulse( ).model( ).lobby( ).match( ).try_join_team( mira_player, preferred_team );
-    }
-    else
-    {
-      sender.sendMessage( ChatColor.LIGHT_PURPLE + "this command is unavailable right now." );
+      default -> sender.sendMessage( this.pulse( ).model( ).message( "match.no_game" ) );
     }
   }
 }

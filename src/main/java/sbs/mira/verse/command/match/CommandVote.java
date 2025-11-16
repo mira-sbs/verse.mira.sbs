@@ -40,7 +40,7 @@ class CommandVote
   {
     if ( !( sender instanceof Player ) )
     {
-      sender.sendMessage( ChatColor.RED + "console cannot participate in-game. :(" );
+      sender.sendMessage( this.pulse( ).model( ).message( "error.non_player" ) );
       
       return;
     }
@@ -49,7 +49,7 @@ class CommandVote
     
     for ( MiraGameModeType game_mode_type : MiraGameModeType.values( ) )
     {
-      if ( input_game_mode.equalsIgnoreCase( game_mode_type.name( ) ) )
+      if ( input_game_mode.equalsIgnoreCase( game_mode_type.label( ) ) )
       {
         input_game_mode_type = game_mode_type;
         break;
@@ -58,7 +58,7 @@ class CommandVote
     
     if ( input_game_mode_type == null )
     {
-      sender.sendMessage( ChatColor.RED + "that game mode does not exist." );
+      sender.sendMessage( this.pulse( ).model( ).message( "match.vote.no_match" ) );
       
       return;
     }

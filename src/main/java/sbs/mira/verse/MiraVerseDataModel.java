@@ -1,12 +1,15 @@
 package sbs.mira.verse;
 
-import org.bukkit.craftbukkit.v1_21_R6.entity.CraftPlayer;
-import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.model.MiraConfigurationModel;
 import sbs.mira.core.model.MiraPluginDataModel;
 import sbs.mira.core.model.match.MiraLobbyModel;
+import sbs.mira.verse.event.handler.MiraVerseLobbyJoinGuard;
+import sbs.mira.verse.event.handler.MiraVerseLobbyQuitGuard;
+import sbs.mira.verse.model.map.MiraVerseMapRepository;
+import sbs.mira.verse.model.match.MiraVerseGameModeRepository;
+import sbs.mira.verse.model.match.MiraVerseLobbyGuard;
 
 /**
  * [wit.]
@@ -21,9 +24,15 @@ public
 class MiraVerseDataModel
   extends MiraPluginDataModel<MiraVersePulse, MiraVersePlayer>
 {
-  private @Nullable MiraConfigurationModel<MiraVersePulse> pvp_messages;
+  @Nullable
+  private MiraConfigurationModel<MiraVersePulse> verse_messages;
   
-  private final @NotNull MiraLobbyModel<MiraVersePulse> lobby;
+  @NotNull
+  private final MiraVerseMapRepository map_repository;
+  @NotNull
+  private final MiraVerseGameModeRepository game_mode_repository;
+  @Nullable
+  private MiraLobbyModel<MiraVersePulse> lobby;
   
   
   public
@@ -31,7 +40,8 @@ class MiraVerseDataModel
   {
     super( pulse );
     
-    this.lobby = new MiraLobbyModel<>( this.pulse( ) );
+    this.map_repository = new MiraVerseMapRepository( );
+    this.game_mode_repository = new MiraVerseGameModeRepository( );
   }
   
   @Override
@@ -40,16 +50,23 @@ class MiraVerseDataModel
   {
     super.initialise( );
     
-    this.pvp_messages = new MiraConfigurationModel<>( this.pulse( ), "pvp_messages.yml" );
+    this.lobby = new MiraLobbyModel<>( this.pulse( ) );
+    this.verse_messages = new MiraConfigurationModel<>( this.pulse( ), "verse_messages.yml" );
+    this.event_handler( new MiraVerseLobbyJoinGuard( this.pulse( ) ) );
+    this.event_handler( new MiraVerseLobbyQuitGuard( this.pulse( ) ) );
+    
+    // todo: keep track of this?
+    new MiraVerseLobbyGuard( this.pulse( ) );
   }
   
   @Override
-  public @NotNull
+  @NotNull
+  public
   String find_message( @NotNull String key )
   {
-    assert this.pvp_messages != null;
+    assert this.verse_messages != null;
     
-    String result = this.pvp_messages.get( key );
+    String result = this.verse_messages.get( key );
     
     if ( result == null )
     {
@@ -59,25 +76,31 @@ class MiraVerseDataModel
     return result;
   }
   
-  @Override
-  public @NotNull
-  MiraVersePlayer declares( @NotNull CraftPlayer subject )
-  {
-    
-    return new MiraVersePlayer( subject, pulse( ) );
-  }
-  
-  public @NotNull
-  MiraVersePlayer declares( @NotNull Player subject )
-  {
-    return this.declares( ( CraftPlayer ) subject );
-  }
-  
   /*—[mvc]————————————————————————————————————————————————————————————————————*/
   
-  public @NotNull
+  @NotNull
+  public
   MiraLobbyModel<MiraVersePulse> lobby( )
   {
-    return lobby;
+    if ( this.lobby == null )
+    {
+      throw new NullPointerException( "lobby was not instantiated?" );
+    }
+    
+    return this.lobby;
+  }
+  
+  @NotNull
+  public
+  MiraVerseMapRepository map_repository( )
+  {
+    return this.map_repository;
+  }
+  
+  @NotNull
+  public
+  MiraVerseGameModeRepository game_mode_repository( )
+  {
+    return this.game_mode_repository;
   }
 }

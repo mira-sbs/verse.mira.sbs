@@ -1,5 +1,6 @@
 package sbs.mira.verse.model.match.game.mode;
 
+import org.bukkit.ChatColor;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.jetbrains.annotations.NotNull;
@@ -11,9 +12,6 @@ import sbs.mira.core.model.match.MiraGameModeModel;
 import sbs.mira.core.model.match.MiraGameModeType;
 import sbs.mira.core.model.match.MiraMatch;
 import sbs.mira.verse.MiraVersePulse;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * implementation of the team death match (tdm) game mode.
@@ -28,8 +26,6 @@ public
 class MiraTeamDeathMatch
   extends MiraGameModeModel<MiraVersePulse>
 {
-  private final static String TEAM_SCORE_FORMAT = "    %s%d";
-  
   public
   MiraTeamDeathMatch( @NotNull MiraVersePulse pulse, @NotNull MiraMatch match )
   {
@@ -48,7 +44,7 @@ class MiraTeamDeathMatch
   {
     super.activate( );
     
-    this.scoreboard.initialise( this.match.map( ).teams( ).size( ) + 3 );
+    this.scoreboard.initialise( this.match.map( ).teams( ).size( ) + 4 );
     this.update_scoreboard( );
     
     this.pulse( ).model( ).players( ).forEach( this.scoreboard::show );
@@ -91,18 +87,22 @@ class MiraTeamDeathMatch
   public
   void update_scoreboard( )
   {
-    int scoreboard_row_index = this.match.map( ).teams( ).size( ) + 2;
+    //fixme: store current length in model? it's literally there. >:(
+    int scoreboard_row_index = this.match.map( ).teams( ).size( ) + 3;
     
-    this.scoreboard.set_row( --scoreboard_row_index, " " );
-    this.scoreboard.set_row( --scoreboard_row_index, "  Points" );
+    this.scoreboard.set_row( scoreboard_row_index--, " " );
+    this.scoreboard.set_row(
+      scoreboard_row_index--,
+      "  " + ChatColor.AQUA + this.display_name( ) );
+    this.scoreboard.set_row( scoreboard_row_index--, ChatColor.LIGHT_PURPLE + " points" );
     
     for ( MiraTeamModel team : this.match.map( ).teams( ) )
     {
-      String team_scoreboard_entry = TEAM_SCORE_FORMAT.formatted(
-        team.coloured_display_name( ),
-        this.team_points( team.label( ) ) );
+      String team_scoreboard_entry = this.pulse( ).model( ).message(
+        "match.scoreboard.game.team_score_format", team.coloured_display_name( ),
+        String.valueOf( this.team_points( team.label( ) ) ) );
       
-      this.scoreboard.set_row( --scoreboard_row_index, team_scoreboard_entry );
+      this.scoreboard.set_row( scoreboard_row_index--, team_scoreboard_entry );
     }
     
     this.scoreboard.set_row( scoreboard_row_index, "  " );

@@ -2,7 +2,6 @@ package sbs.mira.verse.command.match;
 
 
 import app.ashcon.intake.Command;
-import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -35,7 +34,7 @@ class CommandLeave
   {
     if ( !( sender instanceof Player ) )
     {
-      sender.sendMessage( ChatColor.RED + "console cannot participate in-game. :(" );
+      sender.sendMessage( this.pulse( ).model( ).message( "error.non_player" ) );
       
       return;
     }
@@ -45,7 +44,7 @@ class CommandLeave
     
     if ( !mira_player.joined( ) )
     {
-      sender.sendMessage( ChatColor.YELLOW + "you are not marked as joined!" );
+      sender.sendMessage( this.pulse( ).model( ).message( "match.team.leave.not_joined" ) );
       
       return;
     }
@@ -56,15 +55,13 @@ class CommandLeave
       {
         mira_player.joined( false );
         
-        sender.sendMessage( ChatColor.DARK_GREEN +
-                            "you will no longer automatically join the next round." );
+        sender.sendMessage( this.pulse( ).model( ).message( "match.team.leave.ok_waiting" ) );
       }
       case GAME ->
       {
         this.pulse( ).model( ).lobby( ).match( ).try_leave_team( mira_player );
       }
-      default ->
-        sender.sendMessage( ChatColor.LIGHT_PURPLE + "this command is unavailable right now." );
+      default -> sender.sendMessage( this.pulse( ).model( ).message( "match.no_game" ) );
     }
   }
 }

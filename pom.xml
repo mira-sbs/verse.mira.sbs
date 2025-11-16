@@ -39,7 +39,7 @@
         <includes>
           <include>config.yml</include>
           <include>plugin.yml</include>
-          <include>pvp_messages.yml</include>
+          <include>verse_messages.yml</include>
         </includes>
       </resource>
     </resources>
@@ -68,8 +68,6 @@
               <artifactSet>
                 <includes>
                   <include>sbs.mira:core</include>
-                  <include>app.ashcon.intake:intake-bukkit:*</include>
-                  <include>app.ashcon.intake:intake-core:*</include>
                 </includes>
               </artifactSet>
             </configuration>
@@ -93,8 +91,12 @@
 
   <repositories>
     <repository>
-      <id>ashcon.app</id>
-      <url>https://repo.ashcon.app/nexus/content/repositories/snapshots/</url>
+      <id>spigot-repo</id>
+      <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+    </repository>
+    <repository>
+      <id>papermc</id>
+      <url>https://repo.papermc.io/repository/maven-public/</url>
     </repository>
   </repositories>
 
@@ -106,9 +108,50 @@
       <scope>compile</scope>
     </dependency>
     <dependency>
+      <groupId>org.jetbrains</groupId>
+      <artifactId>annotations</artifactId>
+      <version>26.0.2</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>6.0.1</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.papermc.paper</groupId>
+      <artifactId>paper-api</artifactId>
+      <version>1.21.10-R0.1-SNAPSHOT</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.spigotmc</groupId>
+      <artifactId>spigot-api</artifactId>
+      <version>1.21.10-R0.1-SNAPSHOT</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.bukkit</groupId>
+      <artifactId>craftbukkit</artifactId>
+      <version>1.21.10-R0.1-SNAPSHOT</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockbukkit.mockbukkit</groupId>
+      <artifactId>mockbukkit-v1.21</artifactId>
+      <version>4.98.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>app.ashcon.intake</groupId>
       <artifactId>intake-bukkit</artifactId>
       <version>1.3-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>com.github.f4b6a3</groupId>
+      <artifactId>ulid-creator</artifactId>
+      <version>5.2.3</version>
     </dependency>
   </dependencies>
 </project>

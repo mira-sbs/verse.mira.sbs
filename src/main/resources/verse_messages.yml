@@ -1,0 +1,48 @@
+match:
+  no_game: "&4(._.): &cyou cannot use this command right now."
+  time:
+    minutes: "&6(⊃^-^)⊃⏱: &ethere is &a{0} minute(s) &eremaining!"
+    seconds: "&6(⊃^-^)⊃⏱: &eyou've got &c{0} seconds &eleft — breathe and flow!"
+  result:
+    tie: "&6\\(^-^)/: &ethe match has concluded with a &c{0}-way tie&e! &e{1} &ctied &ewith &c{2} {3}&e!"
+  scoreboard:
+    vote:
+      title: "&d✎&5✎ &e{0} &6[{1}]"
+      now_voting: " &bnow voting:"
+      vote_count: "&c❖ &5[{0}] &d{1} &2[{2}]"
+    game:
+      title: "&d⚔&5⚔ &e{0} &6[{1}]"
+      team_score_format: "  &e❖ {0}&e: {1}"
+      pre_game:
+        line1: " &bmatch starting soon."
+        line2: " &etype &a/join &eto play!"
+      post_game:
+        line1: " &dgg!"
+        line2: " &cnext map: &a??"
+  vote:
+    ok: "&5(⊃^-^)⊃: &dyou have cast your vote."
+    ok_rigged: "&4(._.)7: &cyou have rigged the vote!"
+    no_match: "&4(o_O): &cthat game mode does not exist."
+    no_support: "&4(o_O): &cthat game mode is not supported on this map."
+    already_voted: "&4(o_O): &cyou have already voted!"
+    already_rigged: "&4(o_O): &cthe vote has already been rigged!"
+    broadcast:
+      ok: "&6(⊃^-^)⊃: {0} &ehas voted for the game mode &a{1}&e!"
+      ok_rigged: "&6(o_o): &ethis vote has been &crigged&e!"
+      result: "&6\\(^-^)/: &ethe vote has concluded and &a{0} &ehas been selected!"
+  team:
+    join:
+      ok: "&5(^-^)7: &dyou have joined the &r{0}&d!"
+      already_joined: "&4(x_x): &cyou are already marked as joined!"
+      waiting: "&6(^-^)/: &eyou will automatically join at the start of the match."
+      late: "&4(o_o): &cpermanent death is enabled - you can't join this match!"
+      full: "&4(._.): &call teams are full - please try joining later."
+    leave:
+      ok: "&5(^-^)7: &dyou are now spectating!"
+      ok_waiting: "&6(^-^)/: &eyou will &cno longer &eautomatically join at the start of the match."
+      not_joined: "&4(x_x): &cyou are not marked as joined!"
+      no_rejoin: "&6(o_o): &cwarning: &eyou will not be able to re-join this match."
+    preference:
+      no_permission: "&4(x_x): &cyou do not have permission to pick a team preference."
+      no_match: "&4(o_O): &cthat team does not exist."
+      full: "&4(._.): &cthat team is full - please try joining later."

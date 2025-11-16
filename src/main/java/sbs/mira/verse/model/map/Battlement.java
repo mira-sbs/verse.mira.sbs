@@ -25,35 +25,36 @@ public
 class Battlement
   extends MiraMapModel<MiraVersePulse>
 {
-  @NotNull
-  private final MiraTeamModel TEAM_BLUE =
-    new MiraTeamModel( "blue", "Blue Team", ChatColor.BLUE, 24 );
-  
-  @NotNull
-  private final MiraTeamModel TEAM_RED =
-    new MiraTeamModel( "red", "Red Team", ChatColor.RED, 24 );
+  private MiraTeamModel TEAM_BLUE;
+  private MiraTeamModel TEAM_RED;
   
   public
   Battlement( @NotNull MiraVersePulse pulse, @NotNull MiraMatchModel<?> match )
   {
     super( pulse, match );
-    
-    this.label( "battlement" );
-    this.display_name( "Battlement" );
-    this.creator( "9b733374-2418-4c5a-b6a4-d27b77020903" );
-    this.allow_game_mode_type( MiraGameModeType.CAPTURE_THE_FLAG );
-    this.allow_game_mode_type( MiraGameModeType.LAST_TEAM_STANDING );
-    this.allow_game_mode_type( MiraGameModeType.LIFE_POOL );
-    
-    this.team( TEAM_BLUE );
-    this.team( TEAM_RED );
   }
   
   
   @Override
   protected
-  void define_rules( )
+  void define_metadata( )
   {
+    this.label( "battlement" );
+    this.display_name( "Battlement" );
+    this.creator( "9b733374-2418-4c5a-b6a4-d27b77020903" );
+    
+    this.allow_game_mode_type( MiraGameModeType.CAPTURE_THE_FLAG );
+    this.allow_game_mode_type( MiraGameModeType.LAST_TEAM_STANDING );
+    this.allow_game_mode_type( MiraGameModeType.LIFE_POOL );
+    
+    this.TEAM_BLUE =
+      new MiraTeamModel( "blue", "Blue Team", ChatColor.BLUE, 24 );
+    this.TEAM_RED =
+      new MiraTeamModel( "red", "Red Team", ChatColor.RED, 24 );
+    
+    this.team( TEAM_BLUE );
+    this.team( TEAM_RED );
+    
     this.allow_block_break( false );
     this.allow_block_place( false );
     this.allow_block_explode( true );
@@ -122,8 +123,15 @@ class Battlement
     this.team_spawn( TEAM_RED, new Position( 19.5, 74, -29.5, 45, 0 ) );
     this.team_spawn( TEAM_RED, new Position( 23.5, 78, -25.5, 45, 0 ) );
     
-    this.spectator_spawn_position =
-      new PositionPlane( 13.5, 93, 17.5, 135, 25, 3, 3, this.pulse( ).model( ).rng );
+    this.spectator_spawn_position( new PositionPlane(
+      13.5,
+      93,
+      17.5,
+      135,
+      25,
+      3,
+      3,
+      this.pulse( ).model( ).rng ) );
   }
   
   @Override

@@ -1,7 +1,7 @@
 package sbs.mira.verse;
 
 import org.bukkit.ChatColor;
-import org.bukkit.craftbukkit.v1_21_R6.entity.CraftPlayer;
+import org.bukkit.entity.Player;
 import sbs.mira.core.model.MiraPlayerModel;
 
 /**
@@ -20,11 +20,17 @@ class MiraVersePlayer
 {
   
   public
-  MiraVersePlayer( CraftPlayer player, MiraVersePulse pulse )
+  MiraVersePlayer( Player player, MiraVersePulse pulse )
   {
     super( player, pulse );
-    
-    toggle_visibilities( );
+  }
+  
+  @Override
+  public
+  void update( )
+  {
+    this.changes_name( );
+    this.toggle_visibilities( );
   }
   
   /**
@@ -34,14 +40,14 @@ class MiraVersePlayer
    *   <li>`setCollidable(false)` ensures spectators cannot bump match participants around.</li>
    * </ul>
    */
-  private
+  public
   void toggle_visibilities( )
   {
     if ( has_team( ) )
     {
-      this.bukkit( ).setCollidable( true );
+      this.player.setCollidable( true );
       
-      for ( MiraVersePlayer mira_player : pulse( ).model( ).players( ) )
+      for ( MiraVersePlayer mira_player : this.pulse( ).model( ).players( ) )
       {
         if ( !mira_player.equals( this ) )
         {
@@ -60,8 +66,9 @@ class MiraVersePlayer
     }
     else
     {
-      player.setCollidable( false );
-      for ( MiraVersePlayer mira_player : pulse( ).model( ).players( ) )
+      this.player.setCollidable( false );
+      
+      for ( MiraVersePlayer mira_player : this.pulse( ).model( ).players( ) )
       {
         if ( !mira_player.equals( this ) )
         {
@@ -116,6 +123,9 @@ class MiraVersePlayer
     }*/
     
     ChatColor teamColor = has_team( ) ? team( ).color( ) : ChatColor.LIGHT_PURPLE;
-    bukkit( ).setDisplayName( prefix + teamColor + name( ) + ChatColor.WHITE );
+    bukkit( ).setDisplayName( prefix + teamColor + name( ) + ChatColor.RESET );
+    bukkit( ).setPlayerListName( bukkit( ).getDisplayName( ) );
+    bukkit( ).setCustomName( bukkit( ).getDisplayName( ) );
+    bukkit( ).setCustomNameVisible( true );
   }
 }

@@ -1,13 +1,10 @@
 ################################################################################
-# [mira~may i reflect again?]
-# [v1.0.0-witness]
+# [mira—v1.0.1] may i reflect again?
 # global (default!) configuration file.
 ################################################################################
 mira:
   file_paths:
-    world_repository: "/home/founders/repo/maps"
-
-
+    world_repository: "/home/prj/minecraft/repo"
 webstats:
   enable: true
   action: "www.somescript.com/dothis.php"
@@ -15,9 +12,10 @@ webstats:
   position: 0
 settings:
   maps_repo: "/home/founders/repo/maps"
-  voteTime: 30
-  cycleTime: 30
-  startTime: 30
+  duration:
+    vote: 30
+    pre_game: 25
+    post_game: 25
 database:
   enabled: true
   username: "jj"

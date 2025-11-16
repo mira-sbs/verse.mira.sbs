@@ -30,22 +30,21 @@ public
 class MiraVersePlugin
   extends MiraPlugin<MiraVersePulse>
 {
+  @NotNull
+  private final MiraVerseDataModel data_model;
+  
   public
-  MiraVersePlugin( @NotNull MiraVersePulse pulse )
+  MiraVersePlugin( )
   {
-    super( pulse );
+    super( new MiraVersePulse( ) );
+    
+    this.data_model = new MiraVerseDataModel( this.pulse( ) );
   }
   
   @Override
   public
   void onLoad( )
   {
-    this.pulse( ).log( "[verse] %s loads..".formatted( this.description( ) ) );
-    
-    super.onLoad( );
-    
-    this.pulse( ).breathe( this, new MiraVerseDataModel( this.pulse( ) ) );
-    
     BasicBukkitCommandGraph command_graph = new BasicBukkitCommandGraph( );
     DispatcherNode dispatcher = command_graph.getRootDispatcherNode( );
     dispatcher.registerCommands( new CommandJoin( this.pulse( ) ) );
@@ -65,6 +64,8 @@ class MiraVersePlugin
   {
     super.onEnable( );
     
+    this.pulse( ).revive( this, this.data_model );
+    
     this.pulse( ).log( "[verse] %s enables..".formatted( this.description( ) ) );
     
     this.getServer( ).getMessenger( ).registerOutgoingPluginChannel( this, "BungeeCord" );
@@ -73,7 +74,7 @@ class MiraVersePlugin
     
     try
     {
-      pulse( ).model( ).lobby( ).begin_match( );
+      this.pulse( ).model( ).lobby( ).begin_match( this.pulse( ).model( ).map_repository( ), this.pulse().model().game_mode_repository() );
     }
     catch ( IOException exception )
     {
@@ -99,6 +100,8 @@ class MiraVersePlugin
     try
     {
       MiraWorldUtility.discards( world_name );
+      
+      this.pulse( ).log( "(^-^)7 lingering match world '%s' deleted. bai!".formatted( world_name ) );
     }
     catch ( IOException ignored )
     {
