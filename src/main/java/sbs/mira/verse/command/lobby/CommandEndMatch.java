@@ -45,6 +45,6 @@ class CommandEndMatch
       ChatColor.LIGHT_PURPLE,
       sender.getName( ) ) );
     
-    this.pulse( ).model( ).lobby( ).conclude_match( );
+    this.pulse( ).model( ).lobby( ).conclude_game( );
   }
 }

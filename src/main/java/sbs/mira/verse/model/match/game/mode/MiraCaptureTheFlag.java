@@ -129,6 +129,7 @@ class MiraCaptureTheFlag
           team_2_flag.team( ).color( ) );
       }
     }
+    
     if ( !this.enabled_quick_steal )
     {
       if ( this.match.seconds_remaining( ) <= 120 )

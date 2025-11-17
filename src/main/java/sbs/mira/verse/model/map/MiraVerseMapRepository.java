@@ -23,17 +23,17 @@ class MiraVerseMapRepository
     this.repository = new HashMap<>( );
     this.repository.put( "battlement", Battlement.class );
     this.repository.put( "clash_of_clay", ClashOfClay.class );
-    this.repository.put( "clash_of_clay", ClashOfClay.class );
   }
   
   @Override
   @NotNull
   public
   Class<? extends MiraMapModel<MiraVersePulse>> map_class( @NotNull String map_label )
+  throws IllegalArgumentException
   {
     if ( !this.repository.containsKey( map_label ) )
     {
-      throw new IllegalArgumentException( "unknown map label '%'?".formatted( map_label ) );
+      throw new IllegalArgumentException( "unknown map label '%s'?".formatted( map_label ) );
     }
     
     return this.repository.get( map_label );

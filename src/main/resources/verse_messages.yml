@@ -4,7 +4,11 @@ match:
     minutes: "&6(⊃^-^)⊃⏱: &ethere is &a{0} minute(s) &eremaining!"
     seconds: "&6(⊃^-^)⊃⏱: &eyou've got &c{0} seconds &eleft — breathe and flow!"
   result:
-    tie: "&6\\(^-^)/: &ethe match has concluded with a &c{0}-way tie&e! &e{1} &ctied &ewith &c{2} {3}&e!"
+    conclusion: "&6\\(^-^)/: &ethe match has concluded with a &dsingle winner&e!"
+    winner: "&6(⊃^-^)⊃: &e{0} &bwin the match &ewith &d{1} point(s)&e!"
+    tie:
+      conclusion: "&6\\(^-^)/: &ethe match has concluded with a &b{0}-way tie&e!"
+      winners: "&6(⊃^-^)⊃: &e{0} &btie the match &ewith &d{1} point(s)&e!"
   scoreboard:
     vote:
       title: "&d✎&5✎ &e{0} &6[{1}]"
@@ -46,3 +50,15 @@ match:
       no_permission: "&4(x_x): &cyou do not have permission to pick a team preference."
       no_match: "&4(o_O): &cthat team does not exist."
       full: "&4(._.): &cthat team is full - please try joining later."
+  map:
+    no_match: "&4(o_O): &cthat map does not exist."
+    set_next:
+      unset: "&6(⊃^-^)⊃: {0} &ehas unset the next map - the rotation will continue!"
+      ok: "&6(⊃^-^)⊃: {0} &ehas set the next map to be &b{1}&e!"
+  rotation:
+    header: "&5(⊃^-^)⊃: &dmap rotation:"
+    item: "&c❖ &6{0} &e[{1}] &6{2}"
+    one_off:
+      item: "&3❖ &6{0} &e[{1}] &b{2}"
+      current: "&6⊂(・_・⊂): &ethe current map has been set out of rotation."
+      next: "&6⊂(・_・⊂): &ethe next map has been set out of rotation."

@@ -50,7 +50,8 @@ class MiraVerseDataModel
   {
     super.initialise( );
     
-    this.lobby = new MiraLobbyModel<>( this.pulse( ) );
+    this.lobby =
+      new MiraLobbyModel<>( this.pulse( ), this.map_repository, this.game_mode_repository );
     this.verse_messages = new MiraConfigurationModel<>( this.pulse( ), "verse_messages.yml" );
     this.event_handler( new MiraVerseLobbyJoinGuard( this.pulse( ) ) );
     this.event_handler( new MiraVerseLobbyQuitGuard( this.pulse( ) ) );

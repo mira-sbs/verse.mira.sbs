@@ -2,12 +2,9 @@ package sbs.mira.verse.command.lobby;
 
 import app.ashcon.intake.Command;
 import app.ashcon.intake.parametric.annotation.Switch;
-import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.model.MiraCommandModel;
-import sbs.mira.core.model.map.MiraMapModel;
 import sbs.mira.verse.MiraVersePulse;
 
 public
@@ -36,7 +33,7 @@ class CommandSetNext
   public
   void set_next(
     @NotNull CommandSender sender,
-    @Nullable String map_label,
+    String map_label,
     @Switch ('u') boolean unset )
   {
     
@@ -44,26 +41,31 @@ class CommandSetNext
     {
       this.pulse( ).model( ).lobby( ).map_rotation( ).set_next_map( null );
       
-      this.server( ).broadcastMessage( "%s has unset the next map - the rotation will continue.".formatted(
+      this.server( ).broadcastMessage( this.pulse( ).model( ).message(
+        "match.map.set_next.unset",
         sender.getName( ) ) );
       
       return;
     }
     
     // fixme: need map repository + game mode repository.
-    MiraMapModel<MiraVersePulse> map = null;
-    
-    if ( map == null )
+    try
     {
-      sender.sendMessage( ChatColor.RED + "that map does not exist." );
+      Class<?> map = this.pulse( ).model( ).map_repository( ).map_class( map_label );
+    }
+    catch ( IllegalArgumentException illegal_argument_exception )
+    {
+      sender.sendMessage( this.pulse( ).model( ).message( "match.map.no_match" ) );
       
       return;
     }
     
     this.pulse( ).model( ).lobby( ).map_rotation( ).set_next_map( map_label );
     
-    this.server( ).broadcastMessage( "%s has set the next map to be %s.".formatted(
+    //fixme: use map name and not label. need db entries first!
+    this.server( ).broadcastMessage( this.pulse( ).model( ).message(
+      "match.map.set_next.ok",
       sender.getName( ),
-      map.display_name( ) ) );
+      map_label ) );
   }
 }

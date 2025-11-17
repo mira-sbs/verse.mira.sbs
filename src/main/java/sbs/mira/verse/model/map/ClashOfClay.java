@@ -10,6 +10,7 @@ import org.jetbrains.annotations.NotNull;
 import sbs.mira.core.model.MiraPlayerModel;
 import sbs.mira.core.model.map.MiraMapModel;
 import sbs.mira.core.model.map.MiraTeamModel;
+import sbs.mira.core.model.map.objective.standard.MiraObjectiveDestroyMonument;
 import sbs.mira.core.model.match.MiraGameModeType;
 import sbs.mira.core.model.match.MiraMatchModel;
 import sbs.mira.core.model.utility.Position;
@@ -42,6 +43,7 @@ class ClashOfClay
     
     this.allow_game_mode_type( MiraGameModeType.TEAM_DEATH_MATCH );
     this.allow_game_mode_type( MiraGameModeType.LIFE_POOL );
+    this.allow_game_mode_type( MiraGameModeType.DESTROY_THE_MONUMENT );
     
     this.TEAM_BLUE = new MiraTeamModel( "blue", "Blue Team", ChatColor.BLUE, 16 );
     this.TEAM_RED = new MiraTeamModel( "red", "Red Team", ChatColor.RED, 16 );
@@ -54,13 +56,52 @@ class ClashOfClay
     this.allow_block_break( true );
     this.allow_block_place( true );
     this.allow_block_explode( true );
-    this.build_region( new Region( new Position( -51, 0, 0 ), new Position( 4, 255, 172 ) ) );
+    
+    this.build_region( new Region( new Position( -51, 67, -2 ), new Position( 6, 112, 173 ) ) );
   }
   
   @Override
   protected
   void define_objectives( )
   {
+    this.objective( new MiraObjectiveDestroyMonument<>(
+      this.pulse( ),
+      "Flag A",
+      TEAM_BLUE,
+      Material.BLUE_GLAZED_TERRACOTTA,
+      new Region( new Position( -46, 100, 104 ), new Position( -39, 103, 105 ) ) ) );
+    this.objective( new MiraObjectiveDestroyMonument<>(
+      this.pulse( ),
+      "Flag B",
+      TEAM_BLUE,
+      Material.BLUE_GLAZED_TERRACOTTA,
+      new Region( new Position( -13, 99, 127 ), new Position( -4, 102, 128 ) ) ) );
+    this.objective( new MiraObjectiveDestroyMonument<>(
+      this.pulse( ),
+      "Flag C",
+      TEAM_BLUE,
+      Material.BLUE_GLAZED_TERRACOTTA,
+      new Region( new Position( -44, 103, 168 ), new Position( -35, 107, 170 ) ) ) );
+    
+    this.objective( new MiraObjectiveDestroyMonument<>(
+      this.pulse( ),
+      "Flag A",
+      TEAM_RED,
+      Material.RED_GLAZED_TERRACOTTA,
+      new Region( new Position( -7, 100, 67 ), new Position( 0, 103, 68 ) ) ) );
+    this.objective( new MiraObjectiveDestroyMonument<>(
+      this.pulse( ),
+      "Flag B",
+      TEAM_RED,
+      Material.RED_GLAZED_TERRACOTTA,
+      new Region( new Position( -42, 99, 44 ), new Position( -33, 102, 45 ) ) ) );
+    this.objective( new MiraObjectiveDestroyMonument<>(
+      this.pulse( ),
+      "Flag C",
+      TEAM_RED,
+      Material.RED_GLAZED_TERRACOTTA,
+      new Region( new Position( -11, 103, 2 ), new Position( -2, 107, 4 ) ) ) );
+    
     // no objectives on this map.
     //objectives( ).add( new SpawnArea( main, -25, 7, -22, 10, true, true ) );
     //objectives( ).add( new SpawnArea( main, -25, 162, -22, 165, true, true ) );

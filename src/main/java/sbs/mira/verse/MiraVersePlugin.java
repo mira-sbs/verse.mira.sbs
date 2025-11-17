@@ -74,7 +74,7 @@ class MiraVersePlugin
     
     try
     {
-      this.pulse( ).model( ).lobby( ).begin_match( this.pulse( ).model( ).map_repository( ), this.pulse().model().game_mode_repository() );
+      this.pulse( ).model( ).lobby( ).begin_match( );
     }
     catch ( IOException exception )
     {
