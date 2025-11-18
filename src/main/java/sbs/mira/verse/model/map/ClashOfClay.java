@@ -18,6 +18,7 @@ import sbs.mira.core.model.utility.PositionPlane;
 import sbs.mira.core.model.utility.Region;
 import sbs.mira.core.utility.MiraItemUtility;
 import sbs.mira.verse.MiraVersePulse;
+import sbs.mira.verse.model.map.objective.MiraObjectiveFulfillableDestroyMonument;
 
 @SuppressWarnings ("Duplicates")
 public
@@ -57,6 +58,8 @@ class ClashOfClay
     this.allow_block_place( true );
     this.allow_block_explode( true );
     
+    this.exclude_block_drop( Material.IRON_BARS );
+    
     this.build_region( new Region( new Position( -51, 67, -2 ), new Position( 6, 112, 173 ) ) );
   }
   
@@ -64,47 +67,54 @@ class ClashOfClay
   protected
   void define_objectives( )
   {
-    this.objective( new MiraObjectiveDestroyMonument<>(
+    MiraObjectiveFulfillableDestroyMonument flag_a =
+      new MiraObjectiveFulfillableDestroyMonument( this.pulse( ) );
+    flag_a.monument( new MiraObjectiveDestroyMonument<>(
       this.pulse( ),
       "Flag A",
       TEAM_BLUE,
       Material.BLUE_GLAZED_TERRACOTTA,
       new Region( new Position( -46, 100, 104 ), new Position( -39, 103, 105 ) ) ) );
-    this.objective( new MiraObjectiveDestroyMonument<>(
-      this.pulse( ),
-      "Flag B",
-      TEAM_BLUE,
-      Material.BLUE_GLAZED_TERRACOTTA,
-      new Region( new Position( -13, 99, 127 ), new Position( -4, 102, 128 ) ) ) );
-    this.objective( new MiraObjectiveDestroyMonument<>(
-      this.pulse( ),
-      "Flag C",
-      TEAM_BLUE,
-      Material.BLUE_GLAZED_TERRACOTTA,
-      new Region( new Position( -44, 103, 168 ), new Position( -35, 107, 170 ) ) ) );
-    
-    this.objective( new MiraObjectiveDestroyMonument<>(
+    flag_a.monument( new MiraObjectiveDestroyMonument<>(
       this.pulse( ),
       "Flag A",
       TEAM_RED,
       Material.RED_GLAZED_TERRACOTTA,
       new Region( new Position( -7, 100, 67 ), new Position( 0, 103, 68 ) ) ) );
-    this.objective( new MiraObjectiveDestroyMonument<>(
+    
+    MiraObjectiveFulfillableDestroyMonument flag_b =
+      new MiraObjectiveFulfillableDestroyMonument( this.pulse( ) );
+    flag_b.monument( new MiraObjectiveDestroyMonument<>(
+      this.pulse( ),
+      "Flag B",
+      TEAM_BLUE,
+      Material.BLUE_GLAZED_TERRACOTTA,
+      new Region( new Position( -13, 99, 127 ), new Position( -4, 102, 128 ) ) ) );
+    flag_b.monument( new MiraObjectiveDestroyMonument<>(
       this.pulse( ),
       "Flag B",
       TEAM_RED,
       Material.RED_GLAZED_TERRACOTTA,
       new Region( new Position( -42, 99, 44 ), new Position( -33, 102, 45 ) ) ) );
-    this.objective( new MiraObjectiveDestroyMonument<>(
+    
+    MiraObjectiveFulfillableDestroyMonument flag_c =
+      new MiraObjectiveFulfillableDestroyMonument( this.pulse( ) );
+    flag_c.monument( new MiraObjectiveDestroyMonument<>(
+      this.pulse( ),
+      "Flag C",
+      TEAM_BLUE,
+      Material.BLUE_GLAZED_TERRACOTTA,
+      new Region( new Position( -44, 103, 168 ), new Position( -35, 107, 170 ) ) ) );
+    flag_c.monument( new MiraObjectiveDestroyMonument<>(
       this.pulse( ),
       "Flag C",
       TEAM_RED,
       Material.RED_GLAZED_TERRACOTTA,
       new Region( new Position( -11, 103, 2 ), new Position( -2, 107, 4 ) ) ) );
     
-    // no objectives on this map.
-    //objectives( ).add( new SpawnArea( main, -25, 7, -22, 10, true, true ) );
-    //objectives( ).add( new SpawnArea( main, -25, 162, -22, 165, true, true ) );
+    this.objective( flag_a );
+    this.objective( flag_b );
+    this.objective( flag_c );
   }
   
   @Override

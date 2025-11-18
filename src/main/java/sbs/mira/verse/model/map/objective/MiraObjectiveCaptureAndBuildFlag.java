@@ -7,13 +7,13 @@ import sbs.mira.core.MiraModel;
 import sbs.mira.core.MiraPulse;
 import sbs.mira.core.event.match.objective.*;
 import sbs.mira.core.model.MiraEventHandlerModel;
+import sbs.mira.core.model.MiraPlayerModel;
 import sbs.mira.core.model.map.objective.MiraObjectiveFulfillable;
 import sbs.mira.core.model.map.objective.standard.MiraObjectiveBuildMonument;
 import sbs.mira.core.model.map.objective.standard.MiraObjectiveCapturableFlagBlock;
 import sbs.mira.core.model.map.objective.standard.MiraObjectiveMonument;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 public
@@ -135,7 +135,14 @@ class MiraObjectiveCaptureAndBuildFlag<Pulse extends MiraPulse<?, ?>>
   
   @Override
   public
-  void manual_fulfil( )
+  void fulfil( @NotNull MiraPlayerModel<?> mira_player )
+  {
+  
+  }
+  
+  @Override
+  public
+  List<String> closest_winning_teams( )
   {
     if ( this.fulfilled )
     {
@@ -185,12 +192,7 @@ class MiraObjectiveCaptureAndBuildFlag<Pulse extends MiraPulse<?, ?>>
         this.winning_teams.add( team_2_label );
       }
     }
-  }
-  
-  @Override
-  public @NotNull
-  Collection<String> winning_teams( )
-  {
+    
     return this.winning_teams;
   }
   
@@ -273,7 +275,7 @@ class MiraObjectiveCaptureAndBuildFlag<Pulse extends MiraPulse<?, ?>>
         self.fulfilled = true;
         self.winning_teams.add( monument.team( ).label( ) );
         
-        this.call_event( new MiraMatchObjectiveFulfilEvent( self ) );
+        this.call_event( new MiraMatchObjectiveFulfilEvent( self, event.player( ) ) );
       }
     } );
   }

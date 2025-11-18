@@ -62,3 +62,14 @@ match:
       item: "&3❖ &6{0} &e[{1}] &b{2}"
       current: "&6⊂(・_・⊂): &ethe current map has been set out of rotation."
       next: "&6⊂(・_・⊂): &ethe next map has been set out of rotation."
+  objective:
+    points:
+      awarded: "&6\\(^-^)/: {0} &ewas awarded &b{1} point(s)&e{2}&e!"
+    monument:
+      scoreboard: "  {0} {1} &8[{2}&8] &7({3}&7)"
+      damaged:
+        ally: "&5⊂(・_・⊂): {0} &ddamaged {1}&d!"
+        enemy: "&5(⊃^-^)⊃: {0} &ddamaged {1}&d!"
+      destroyed:
+        ally: "&5⊂(・_・⊂): {0} &d{1}destroyed {2}&d!"
+        enemy: "&5(⊃^-^)⊃: {0} &d{1}destroyed {2}&d!"

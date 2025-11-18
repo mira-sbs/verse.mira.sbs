@@ -21,7 +21,6 @@ import org.bukkit.event.player.*;
 import org.bukkit.event.vehicle.VehicleDamageEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
 import org.bukkit.event.vehicle.VehicleEnterEvent;
-import org.bukkit.event.weather.WeatherChangeEvent;
 import org.bukkit.event.world.PortalCreateEvent;
 import org.bukkit.inventory.EnchantingInventory;
 import org.bukkit.inventory.ItemStack;
@@ -474,13 +473,6 @@ class MiraVerseLobbyGuard
     }
   }
   
-  @EventHandler
-  public
-  void block_weather_change( WeatherChangeEvent event )
-  {
-    event.setCancelled( true );
-  }
-  
   /*
    * ALL EVENTS BELOW ARE FOR LAPIS AUTOENCHANT.
    */
@@ -575,11 +567,11 @@ class MiraVerseLobbyGuard
   private
   boolean canMerge( ItemStack compare, ItemStack stack )
   {
-    return compare != null &&
-           compare.getType( ).getMaxDurability( ) >= 1 &&
-           compare.getTypeId( ) == stack.getTypeId( ) &&
-           compare.hasItemMeta( ) == stack.hasItemMeta( ) &&
-           ( compareMeta( compare, stack ) );
+  return compare != null &&
+  compare.getType( ).getMaxDurability( ) >= 1 &&
+  compare.getTypeId( ) == stack.getTypeId( ) &&
+  compare.hasItemMeta( ) == stack.hasItemMeta( ) &&
+  ( compareMeta( compare, stack ) );
   }*/
   
   /**
