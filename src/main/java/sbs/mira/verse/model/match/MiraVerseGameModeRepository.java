@@ -8,6 +8,7 @@ import sbs.mira.core.model.match.MiraMatchModel;
 import sbs.mira.verse.MiraVersePulse;
 import sbs.mira.verse.model.match.game.mode.MiraCaptureTheFlag;
 import sbs.mira.verse.model.match.game.mode.MiraDestroyTheMonument;
+import sbs.mira.verse.model.match.game.mode.MiraLifePool;
 import sbs.mira.verse.model.match.game.mode.MiraTeamDeathMatch;
 
 import java.lang.reflect.InvocationTargetException;
@@ -28,6 +29,7 @@ class MiraVerseGameModeRepository
     this.repository.put( "tdm", MiraTeamDeathMatch.class );
     this.repository.put( "ctf", MiraCaptureTheFlag.class );
     this.repository.put( "dtm", MiraDestroyTheMonument.class );
+    this.repository.put( "lp", MiraLifePool.class );
   }
   
   @Override
@@ -37,7 +39,7 @@ class MiraVerseGameModeRepository
   {
     if ( !this.repository.containsKey( game_mode_label ) )
     {
-      throw new IllegalArgumentException( "unknown game mode label '%'?".formatted( game_mode_label ) );
+      throw new IllegalArgumentException( "unknown game mode label '%s'?".formatted( game_mode_label ) );
     }
     
     return this.repository.get( game_mode_label );
