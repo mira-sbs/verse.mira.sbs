@@ -16,7 +16,7 @@ match:
       vote_count: "&c❖ &5[{0}] &d{1} &2[{2}]"
     game:
       title: "&d⚔&5⚔ &e{0} &6[{1}]"
-      team_score_format: "  &e❖ {0}&e: {1}"
+      team_score_format: "  &8❖ {0}&8: &7[{1}]"
       pre_game:
         line1: " &bmatch starting soon."
         line2: " &etype &a/join &eto play!"
@@ -65,6 +65,26 @@ match:
   objective:
     points:
       awarded: "&6\\(^-^)/: {0} &ewas awarded &b{1} point(s)&e{2}&e!"
+    flag:
+      scoreboard: "  {0} {1} &8[{2}&8] {3}"
+      steal:
+        ally: "&5⊂(・_・⊂): {0} &dhas stolen your {1}&d flag!"
+        enemy: "&5(⊃^-^)⊃: {0} &dstole the {1}&d flag!"
+      drop:
+        ally: "&5(⊃^-^)⊃: {0} &dhas dropped your {1}&d flag!"
+        enemy: "&5⊂(・_・⊂): {0} &ddropped the {1}&d flag!"
+      capture:
+        ally: "&5⊂(・_・⊂): {0} &dhas captured your {1}&d flag!"
+        enemy: "&5(⊃^-^)⊃: {0} &dcaptured the {1}&d flag!"
+      take:
+        ally: "&5(⊃^-^)⊃: {0} &dhas taken the {1}&d flag for {2}&d!"
+        enemy: "&5⊂(・_・⊂): {0} &dhas taken the {1}&d flag for {2}&d!"
+      control:
+        ally: "&5(⊃^-^)⊃: {0} &dhas taken control of the {1}&d flag!"
+        enemy: "&5⊂(・_・⊂): {0} &dhas taken control of the {1}&d flag!"
+      secure:
+        ally: "&5(⊃^-^)⊃: {0} &dhave secured the {1}&d flag!"
+        enemy: "&5⊂(・_・⊂): {0} &dhave secured the {1}&d flag!"
     monument:
       scoreboard: "  {0} {1} &8[{2}&8] &7({3}&7)"
       damaged:

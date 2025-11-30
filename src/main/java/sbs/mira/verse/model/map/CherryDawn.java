@@ -19,7 +19,7 @@ import sbs.mira.core.model.utility.PositionPlane;
 import sbs.mira.core.model.utility.Region;
 import sbs.mira.core.utility.MiraItemUtility;
 import sbs.mira.verse.MiraVersePulse;
-import sbs.mira.verse.model.map.objective.MiraObjectiveCaptureAndBuildFlag;
+import sbs.mira.verse.model.map.objective.MiraRequirementCaptureAndBuildFlag;
 
 public
 class CherryDawn
@@ -40,7 +40,7 @@ class CherryDawn
   void define_metadata( )
   {
     this.label( "cherry" );
-    this.display_name( "Cherry Dawn" );
+    this.name( "Cherry Dawn" );
     this.creator( "144ff92c-805f-4003-bc9f-94e5a325ad2a" );
     this.creator( "a40cdbc0-ce09-4c56-a1a8-7732394b6ad4" );
     
@@ -50,9 +50,9 @@ class CherryDawn
     this.allow_game_mode_type( MiraGameModeType.LIFE_POOL );
     
     this.TEAM_BLUE =
-      new MiraTeamModel( "blue", "Blue Team", ChatColor.BLUE, 32 );
+      new MiraTeamModel( "blue", ChatColor.BLUE, "Blue Team", 32 );
     this.TEAM_RED =
-      new MiraTeamModel( "red", "Red Team", ChatColor.RED, 32 );
+      new MiraTeamModel( "red", ChatColor.RED, "Red Team", 32 );
     
     this.team( TEAM_BLUE );
     this.team( TEAM_RED );
@@ -60,40 +60,41 @@ class CherryDawn
     this.allow_block_break( true );
     this.allow_block_place( true );
     this.allow_block_explode( true );
+    this.plateau_y( 3 );
     this.time_lock_time( 22950 );
-    this.match_duration( 1800 );
+    this.match_duration( 1200 );
   }
   
   @Override
   protected
   void define_objectives( )
   {
-    this.objective( new MiraObjectiveCaptureAndBuildFlag<>(
+    this.objective( new MiraRequirementCaptureAndBuildFlag(
       this.pulse( ),
       new MiraObjectiveBuildMonument<>(
         this.pulse( ),
-        "Blue Monument",
+        "Board",
         TEAM_BLUE,
-        Material.BLUE_WOOL,
-        new Region( new Position( 0, 0, 0 ), new Position( 0, 0, 0 ) ) ),
+        Material.RED_WOOL,
+        new Region( new Position( -329, 19, 49 ), new Position( -326, 25, 55 ) ) ),
       new MiraObjectiveBuildMonument<>(
         this.pulse( ),
-        "Red Monument",
+        "Board",
         TEAM_RED,
-        Material.RED_WOOL,
-        new Region( new Position( 0, 0, 0 ), new Position( 0, 0, 0 ) ) ),
+        Material.BLUE_WOOL,
+        new Region( new Position( -32, 19, 47 ), new Position( -29, 25, 53 ) ) ),
       new MiraObjectiveCapturableFlagBlock<>(
         this.pulse( ),
-        "Blue Flag",
+        "Hilltop",
         TEAM_BLUE,
         Material.BLUE_WOOL,
-        new Position( -31, 84, 20 ) ),
+        new Position( -287, 45, 42 ) ),
       new MiraObjectiveCapturableFlagBlock<>(
         this.pulse( ),
-        "Red Flag",
+        "Hilltop",
         TEAM_RED,
         Material.RED_WOOL,
-        new Position( 27, 84, -29 ) )
+        new Position( -71, 45, 60 ) )
     ) );
   }
   
@@ -101,39 +102,14 @@ class CherryDawn
   protected
   void define_spawns( )
   {
-    this.team_spawn( TEAM_BLUE, new Position( -15.5, 70, 4.5, 225, 0 ) );
-    this.team_spawn( TEAM_BLUE, new Position( -23.5, 70, 4.5, 225, 0 ) );
-    this.team_spawn( TEAM_BLUE, new Position( -31.5, 70, 4.5, 225, 0 ) );
-    this.team_spawn( TEAM_BLUE, new Position( -39.5, 70, 4.5, 225, 0 ) );
-    this.team_spawn( TEAM_BLUE, new Position( -15.5, 70, 12.5, 225, 0 ) );
-    this.team_spawn( TEAM_BLUE, new Position( -15.5, 70, 20.5, 225, 0 ) );
-    this.team_spawn( TEAM_BLUE, new Position( -15.5, 70, 28.5, 225, 0 ) );
-    this.team_spawn( TEAM_BLUE, new Position( -23.5, 74, 12.5, 225, 0 ) );
-    this.team_spawn( TEAM_BLUE, new Position( -31.5, 74, 12.5, 225, 0 ) );
-    this.team_spawn( TEAM_BLUE, new Position( -23.5, 74, 20.5, 225, 0 ) );
-    this.team_spawn( TEAM_BLUE, new Position( -27.5, 78, 16.5, 225, 0 ) );
+    this.team_spawn(
+      TEAM_BLUE,
+      new PositionPlane( -350, 23, 53, 270, 0, 3, 3, this.pulse( ).model( ).rng ) );
+    this.team_spawn(
+      TEAM_RED,
+      new PositionPlane( -8, 23, 49, 90, 0, 3, 3, this.pulse( ).model( ).rng ) );
     
-    this.team_spawn( TEAM_RED, new Position( 11.5, 70, -13.5, 45, 0 ) );
-    this.team_spawn( TEAM_RED, new Position( 19.5, 70, -13.5, 45, 0 ) );
-    this.team_spawn( TEAM_RED, new Position( 27.5, 70, -13.5, 45, 0 ) );
-    this.team_spawn( TEAM_RED, new Position( 35.5, 70, -13.5, 45, 0 ) );
-    this.team_spawn( TEAM_RED, new Position( 11.5, 70, -21.5, 45, 0 ) );
-    this.team_spawn( TEAM_RED, new Position( 11.5, 70, -29.5, 45, 0 ) );
-    this.team_spawn( TEAM_RED, new Position( 11.5, 70, -37.5, 45, 0 ) );
-    this.team_spawn( TEAM_RED, new Position( 19.5, 74, -21.5, 45, 0 ) );
-    this.team_spawn( TEAM_RED, new Position( 27.5, 74, -21.5, 45, 0 ) );
-    this.team_spawn( TEAM_RED, new Position( 19.5, 74, -29.5, 45, 0 ) );
-    this.team_spawn( TEAM_RED, new Position( 23.5, 78, -25.5, 45, 0 ) );
-    
-    this.spectator_spawn_position( new PositionPlane(
-      13.5,
-      93,
-      17.5,
-      135,
-      25,
-      3,
-      3,
-      this.pulse( ).model( ).rng ) );
+    this.spectator_spawn_position( new Position( -139, 45, 85, 127.225f, 11.1f ) );
   }
   
   @Override
@@ -151,13 +127,16 @@ class CherryDawn
         Material.IRON_BOOTS
       } );
     
-    inv.setItem( 0, new ItemStack( Material.IRON_SWORD ) );
+    inv.setItem( 0, new ItemStack( Material.COPPER_SWORD ) );
     inv.setItem( 1, new ItemStack( Material.BOW ) );
-    inv.setItem( 2, new ItemStack( Material.COOKED_BEEF, 16 ) );
-    inv.setItem( 3, MiraItemUtility.createPotion( PotionEffectType.INSTANT_HEALTH, 0, 1, 1 ) );
-    inv.setItem( 4, new ItemStack( Material.EXPERIENCE_BOTTLE, 2 ) );
+    inv.setItem( 2, new ItemStack( Material.IRON_PICKAXE ) );
+    inv.setItem( 3, new ItemStack( Material.COOKED_BEEF, 16 ) );
+    inv.setItem(
+      4,
+      MiraItemUtility.create_potion( Material.POTION, PotionEffectType.INSTANT_HEALTH, 0, 1, 2 ) );
+    inv.setItem( 5, new ItemStack( Material.EXPERIENCE_BOTTLE, 2 ) );
     inv.setItem( 27, new ItemStack( Material.ARROW, 28 ) );
     
-    mira_player.bukkit( ).addPotionEffect( new PotionEffect( PotionEffectType.RESISTANCE, 40, 4 ) );
+    mira_player.bukkit( ).addPotionEffect( new PotionEffect( PotionEffectType.SPEED, 100, 1 ) );
   }
 }

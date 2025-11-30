@@ -32,5 +32,7 @@ class MiraVerseLobbyJoinGuard
     mira_player.bukkit( ).setGameMode( GameMode.CREATIVE );
     mira_player.bukkit( ).teleport(
       match.map( ).spectator_spawn_position( ).location( match.world( ), true ) );
+    
+    match.scoreboard( ).show( mira_player );
   }
 }

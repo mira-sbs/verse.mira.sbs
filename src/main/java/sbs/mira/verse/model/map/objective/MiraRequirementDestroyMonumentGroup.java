@@ -10,7 +10,7 @@ import sbs.mira.core.event.match.objective.MiraMatchObjectiveFulfilEvent;
 import sbs.mira.core.model.MiraEventHandlerModel;
 import sbs.mira.core.model.MiraPlayerModel;
 import sbs.mira.core.model.map.MiraTeamModel;
-import sbs.mira.core.model.map.objective.MiraObjectiveFulfillable;
+import sbs.mira.core.model.map.MiraMapRequirement;
 import sbs.mira.core.model.map.objective.standard.MiraObjectiveDestroyMonument;
 import sbs.mira.verse.MiraVersePulse;
 
@@ -20,9 +20,9 @@ import java.util.List;
 import java.util.Map;
 
 public
-class MiraObjectiveFulfillableDestroyMonument
+class MiraRequirementDestroyMonumentGroup
   extends MiraModel<MiraVersePulse>
-  implements MiraObjectiveFulfillable
+  implements MiraMapRequirement
 {
   @NotNull
   private final Map<String, MiraObjectiveDestroyMonument<MiraVersePulse>> team_monuments;
@@ -34,7 +34,7 @@ class MiraObjectiveFulfillableDestroyMonument
   private boolean fulfilled;
   
   public
-  MiraObjectiveFulfillableDestroyMonument( @NotNull MiraVersePulse pulse )
+  MiraRequirementDestroyMonumentGroup( @NotNull MiraVersePulse pulse )
   {
     super( pulse );
     
@@ -57,13 +57,13 @@ class MiraObjectiveFulfillableDestroyMonument
   public
   void monument( @NotNull MiraObjectiveDestroyMonument<MiraVersePulse> monument )
   {
-    if ( this.team_monuments.containsKey( monument.team( ).label( ) ) )
+    if ( this.team_monuments.containsKey( monument.capturing_team( ).label( ) ) )
     {
       throw new IllegalArgumentException( "monument already registered for team '%s'?".formatted(
-        monument.team( ).label( ) ) );
+        monument.capturing_team( ).label( ) ) );
     }
     
-    this.team_monuments.put( monument.team( ).label( ), monument );
+    this.team_monuments.put( monument.capturing_team( ).label( ), monument );
   }
   
   @Override
@@ -89,21 +89,16 @@ class MiraObjectiveFulfillableDestroyMonument
     MiraTeamModel team = mira_player.team( );
     
     this.pulse( ).model( ).lobby( ).match( ).game_mode( ).award_team_points(
-      team.label( ),
-      points_awarded );
-    
-    this.server( ).broadcastMessage( this.pulse( ).model( ).message(
-      "match.objective.points.awarded",
-      team.coloured_display_name( ),
-      String.valueOf( points_awarded ),
-      "" ) );
+      team,
+      points_awarded,
+      "for destroying a monument" );
     
     this.call_event( new MiraMatchObjectiveFulfilEvent( this, mira_player ) );
   }
   
   @Override
   public
-  List<String> closest_winning_teams( )
+  List<String> closest_winning_team_labels( )
   {
     if ( this.fulfilled )
     {
@@ -144,8 +139,6 @@ class MiraObjectiveFulfillableDestroyMonument
     return this.world;
   }
   
-  /*——————————————————————————————————————————————————————————————————————————*/
-  
   @Override
   public
   void activate( @NotNull World world )
@@ -160,7 +153,7 @@ class MiraObjectiveFulfillableDestroyMonument
     
     this.team_monuments.values( ).forEach( ( monument )->monument.activate( this.world ) );
     
-    final MiraObjectiveFulfillableDestroyMonument self = this;
+    final MiraRequirementDestroyMonumentGroup self = this;
     
     this.event_handler( new MiraEventHandlerModel<MiraMatchMonumentDamageEvent, MiraVersePulse>(
       this.pulse( ) )

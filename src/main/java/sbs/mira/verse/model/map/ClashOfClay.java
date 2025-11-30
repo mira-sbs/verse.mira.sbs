@@ -18,7 +18,7 @@ import sbs.mira.core.model.utility.PositionPlane;
 import sbs.mira.core.model.utility.Region;
 import sbs.mira.core.utility.MiraItemUtility;
 import sbs.mira.verse.MiraVersePulse;
-import sbs.mira.verse.model.map.objective.MiraObjectiveFulfillableDestroyMonument;
+import sbs.mira.verse.model.map.objective.MiraRequirementDestroyMonumentGroup;
 
 @SuppressWarnings ("Duplicates")
 public
@@ -39,15 +39,15 @@ class ClashOfClay
   void define_metadata( )
   {
     this.label( "clash_of_clay" );
-    this.display_name( "Clash of Clay" );
+    this.name( "Clash of Clay" );
     this.creator( "d04d579e-78ed-4c60-87d4-39ef95755be6" );
     
     this.allow_game_mode_type( MiraGameModeType.TEAM_DEATH_MATCH );
     this.allow_game_mode_type( MiraGameModeType.LIFE_POOL );
     this.allow_game_mode_type( MiraGameModeType.DESTROY_THE_MONUMENT );
     
-    this.TEAM_BLUE = new MiraTeamModel( "blue", "Blue Team", ChatColor.BLUE, 16 );
-    this.TEAM_RED = new MiraTeamModel( "red", "Red Team", ChatColor.RED, 16 );
+    this.TEAM_BLUE = new MiraTeamModel( "blue", ChatColor.BLUE, "Blue Team", 16 );
+    this.TEAM_RED = new MiraTeamModel( "red", ChatColor.RED, "Red Team", 16 );
     
     this.team( TEAM_BLUE );
     this.team( TEAM_RED );
@@ -67,8 +67,8 @@ class ClashOfClay
   protected
   void define_objectives( )
   {
-    MiraObjectiveFulfillableDestroyMonument flag_a =
-      new MiraObjectiveFulfillableDestroyMonument( this.pulse( ) );
+    MiraRequirementDestroyMonumentGroup flag_a =
+      new MiraRequirementDestroyMonumentGroup( this.pulse( ) );
     flag_a.monument( new MiraObjectiveDestroyMonument<>(
       this.pulse( ),
       "Flag A",
@@ -82,8 +82,8 @@ class ClashOfClay
       Material.RED_GLAZED_TERRACOTTA,
       new Region( new Position( -7, 100, 67 ), new Position( 0, 103, 68 ) ) ) );
     
-    MiraObjectiveFulfillableDestroyMonument flag_b =
-      new MiraObjectiveFulfillableDestroyMonument( this.pulse( ) );
+    MiraRequirementDestroyMonumentGroup flag_b =
+      new MiraRequirementDestroyMonumentGroup( this.pulse( ) );
     flag_b.monument( new MiraObjectiveDestroyMonument<>(
       this.pulse( ),
       "Flag B",
@@ -97,8 +97,8 @@ class ClashOfClay
       Material.RED_GLAZED_TERRACOTTA,
       new Region( new Position( -42, 99, 44 ), new Position( -33, 102, 45 ) ) ) );
     
-    MiraObjectiveFulfillableDestroyMonument flag_c =
-      new MiraObjectiveFulfillableDestroyMonument( this.pulse( ) );
+    MiraRequirementDestroyMonumentGroup flag_c =
+      new MiraRequirementDestroyMonumentGroup( this.pulse( ) );
     flag_c.monument( new MiraObjectiveDestroyMonument<>(
       this.pulse( ),
       "Flag C",

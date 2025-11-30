@@ -44,10 +44,8 @@ class MiraTeamDeathMatch
   {
     super.activate( );
     
-    this.scoreboard.initialise( this.match.map( ).teams( ).size( ) + 4 );
+    this.match.scoreboard( ).initialise( this.match.map( ).teams( ).size( ) + 4 );
     this.update_scoreboard( );
-    
-    this.pulse( ).model( ).players( ).forEach( this.scoreboard::show );
     
     final MiraTeamDeathMatch self = this;
     
@@ -67,7 +65,7 @@ class MiraTeamDeathMatch
         
         int player_killstreak = self.player_killstreak( event.killer( ).uuid( ) );
         
-        self.award_team_points( killer_team.label( ), player_killstreak );
+        self.award_team_points( killer_team, player_killstreak, "" );
         
         self.update_scoreboard( );
       }
@@ -87,27 +85,24 @@ class MiraTeamDeathMatch
   public
   void update_scoreboard( )
   {
-    //fixme: store current length in model? it's literally there. >:(
-    int scoreboard_row_index = this.match.map( ).teams( ).size( ) + 3;
-    
-    this.scoreboard.set_row( scoreboard_row_index--, " " );
-    this.scoreboard.set_row(
-      scoreboard_row_index--,
-      "  " + ChatColor.AQUA + this.display_name( ) );
-    this.scoreboard.set_row( scoreboard_row_index--, ChatColor.LIGHT_PURPLE + " points" );
+    this.match.scoreboard( )
+      .first( )
+      .set( "  " )
+      .next( )
+      .set( ChatColor.GRAY + "♦" + ChatColor.AQUA + this.display_name( ) )
+      .next( )
+      .set( ChatColor.LIGHT_PURPLE + " points" );
     
     for ( MiraTeamModel team : this.match.map( ).teams( ) )
     {
-      String team_scoreboard_entry = this.pulse( ).model( ).message(
-        "match.scoreboard.game.team_score_format", team.coloured_display_name( ),
-        String.valueOf( this.team_points( team.label( ) ) ) );
-      
-      this.scoreboard.set_row( scoreboard_row_index--, team_scoreboard_entry );
+      this.match.scoreboard( )
+        .next( )
+        .set( this.pulse( ).model( ).message(
+          "match.scoreboard.game.team_score_format", team.display_name( ),
+          String.valueOf( this.team_points( team.label( ) ) ) ) );
     }
     
-    this.scoreboard.set_row( scoreboard_row_index, "  " );
-    
-    assert scoreboard_row_index == 0;
+    this.match.scoreboard( ).next( ).set( " " );
   }
   
   @Override

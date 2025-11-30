@@ -106,8 +106,6 @@ class MiraVersePlayer
     }
     else
     {
-      
-      
       if ( bukkit( ).hasPermission( "mira.founder" ) )
       {
         prefix = ChatColor.DARK_BLUE + "#" + prefix;
@@ -117,10 +115,11 @@ class MiraVersePlayer
         prefix = ChatColor.GREEN + "#" + prefix;
       }
     }
-    /*if ( pulse( ).cache( ).getCurrentMap( ).isCreator( crafter( ).getUniqueId( ) ) )
+    
+    if ( this.pulse( ).model( ).lobby( ).match( ).map( ).is_creator( this.uuid( ) ) )
     {
       prefix = ChatColor.DARK_RED + "#" + prefix;
-    }*/
+    }
     
     ChatColor teamColor = has_team( ) ? team( ).color( ) : ChatColor.LIGHT_PURPLE;
     bukkit( ).setDisplayName( prefix + teamColor + name( ) + ChatColor.RESET );

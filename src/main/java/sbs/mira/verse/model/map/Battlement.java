@@ -19,7 +19,7 @@ import sbs.mira.core.model.utility.PositionPlane;
 import sbs.mira.core.model.utility.Region;
 import sbs.mira.core.utility.MiraItemUtility;
 import sbs.mira.verse.MiraVersePulse;
-import sbs.mira.verse.model.map.objective.MiraObjectiveCaptureAndBuildFlag;
+import sbs.mira.verse.model.map.objective.MiraRequirementCaptureAndBuildFlag;
 
 public
 class Battlement
@@ -40,7 +40,7 @@ class Battlement
   void define_metadata( )
   {
     this.label( "battlement" );
-    this.display_name( "Battlement" );
+    this.name( "Battlement" );
     this.creator( "9b733374-2418-4c5a-b6a4-d27b77020903" );
     
     this.allow_game_mode_type( MiraGameModeType.CAPTURE_THE_FLAG );
@@ -48,9 +48,9 @@ class Battlement
     this.allow_game_mode_type( MiraGameModeType.LIFE_POOL );
     
     this.TEAM_BLUE =
-      new MiraTeamModel( "blue", "Blue Team", ChatColor.BLUE, 24 );
+      new MiraTeamModel( "blue", ChatColor.BLUE, "Blue Team", 24 );
     this.TEAM_RED =
-      new MiraTeamModel( "red", "Red Team", ChatColor.RED, 24 );
+      new MiraTeamModel( "red", ChatColor.RED, "Red Team", 24 );
     
     this.team( TEAM_BLUE );
     this.team( TEAM_RED );
@@ -66,7 +66,7 @@ class Battlement
   protected
   void define_objectives( )
   {
-    this.objective( new MiraObjectiveCaptureAndBuildFlag<>(
+    this.objective( new MiraRequirementCaptureAndBuildFlag(
       this.pulse( ),
       new MiraObjectiveBuildMonument<>(
         this.pulse( ),
@@ -152,7 +152,9 @@ class Battlement
     inv.setItem( 0, new ItemStack( Material.IRON_SWORD ) );
     inv.setItem( 1, new ItemStack( Material.BOW ) );
     inv.setItem( 2, new ItemStack( Material.COOKED_BEEF, 16 ) );
-    inv.setItem( 3, MiraItemUtility.createPotion( PotionEffectType.INSTANT_HEALTH, 0, 1, 1 ) );
+    inv.setItem(
+      3,
+      MiraItemUtility.create_potion( Material.POTION, PotionEffectType.INSTANT_HEALTH, 0, 1, 1 ) );
     inv.setItem( 4, new ItemStack( Material.EXPERIENCE_BOTTLE, 2 ) );
     inv.setItem( 27, new ItemStack( Material.ARROW, 28 ) );
     

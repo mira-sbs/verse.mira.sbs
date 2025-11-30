@@ -21,8 +21,11 @@ class MiraVerseMapRepository
   MiraVerseMapRepository( )
   {
     this.repository = new HashMap<>( );
-    this.repository.put( "battlement", Battlement.class );
+    this.repository.put( "maplebank", MaplebankWoods.class );
+    this.repository.put( "cherry", CherryDawn.class );
     this.repository.put( "clash_of_clay", ClashOfClay.class );
+    this.repository.put( "battlement", Battlement.class );
+    this.repository.put( "peaks", TwinPeaks.class );
   }
   
   @Override

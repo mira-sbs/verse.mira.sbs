@@ -16,6 +16,7 @@ import org.bukkit.event.hanging.HangingBreakByEntityEvent;
 import org.bukkit.event.hanging.HangingPlaceEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryCreativeEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.event.vehicle.VehicleDamageEvent;
@@ -279,7 +280,7 @@ class MiraVerseLobbyGuard
     }
     else
     {
-      if ( event.getEntity( ) instanceof Player player )
+      if ( event.getDamager( ) instanceof Player player )
       {
         event.setCancelled( guard( player ) );
       }
@@ -300,6 +301,10 @@ class MiraVerseLobbyGuard
   public
   void guard_pick_up_item( EntityPickupItemEvent event )
   {
+    if ( event.getEntity( ) instanceof Player player )
+    {
+      event.setCancelled( guard( player ) );
+    }
     /* fixme: this.
     event.setCancelled( !mira( ).match( ).canInteract( event.getEntity( ), false ) );
     if ( event.getEntity( ) instanceof Player &&
@@ -313,6 +318,16 @@ class MiraVerseLobbyGuard
   @EventHandler
   public
   void guard_inventory_click( InventoryClickEvent event )
+  {
+    if ( event.getWhoClicked( ) instanceof Player player )
+    {
+      event.setCancelled( guard( player ) );
+    }
+  }
+  
+  @EventHandler
+  public
+  void guard_inventory_creative( InventoryCreativeEvent event )
   {
     if ( event.getWhoClicked( ) instanceof Player player )
     {

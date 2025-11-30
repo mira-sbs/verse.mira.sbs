@@ -74,7 +74,7 @@ class MiraVersePlugin
     
     try
     {
-      this.pulse( ).model( ).lobby( ).begin_match( );
+      this.pulse( ).model( ).lobby( ).begin_match( false );
     }
     catch ( IOException exception )
     {

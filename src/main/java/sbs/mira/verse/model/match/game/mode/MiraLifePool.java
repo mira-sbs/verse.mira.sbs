@@ -28,7 +28,7 @@ class MiraLifePool
   extends MiraGameModeModel<MiraVersePulse>
 {
   @Nullable
-  private int point_loss_modifier;
+  private int point_loss_multiplier;
   @Nullable
   private MiraTeamModel point_loss_target_team;
   
@@ -43,7 +43,7 @@ class MiraLifePool
     this.description_offense( "eliminate enemy team members to deplete their life pool" );
     this.description_defense( "avoid multiple eliminations on your team in a row" );
     
-    this.point_loss_modifier = 0;
+    this.point_loss_multiplier = 0;
     this.point_loss_target_team = null;
   }
   
@@ -55,13 +55,11 @@ class MiraLifePool
     
     for ( MiraTeamModel team : this.match.map( ).teams( ) )
     {
-      this.award_team_points( team.label( ), team.maximum_size( ) * 2 );
+      this.team_points.put( team.label( ), team.size( ) * 4 );
     }
     
-    this.scoreboard.initialise( this.match.map( ).teams( ).size( ) + 4 );
+    this.match.scoreboard( ).initialise( this.match.map( ).teams( ).size( ) + 4 );
     this.update_scoreboard( );
-    
-    this.pulse( ).model( ).players( ).forEach( this.scoreboard::show );
     
     final MiraLifePool self = this;
     
@@ -82,16 +80,21 @@ class MiraLifePool
         if ( self.point_loss_target_team != killed_team )
         {
           self.point_loss_target_team = killed_team;
-          self.point_loss_modifier = 0;
+          self.point_loss_multiplier = 0;
         }
         
-        self.point_loss_modifier++;
+        self.point_loss_multiplier++;
         
-        int points_to_subtract = self.point_loss_modifier;
+        int points_to_subtract = self.point_loss_multiplier;
         
         self.subtract_team_points( killed_team.label( ), points_to_subtract );
         
         self.update_scoreboard( );
+        
+        if ( self.team_points( killed_team.label( ) ) == 0 )
+        {
+          self.match.conclude_game( );
+        }
       }
     } );
   }
@@ -101,41 +104,45 @@ class MiraLifePool
   void deactivate( )
   {
     super.deactivate( );
-    
-    this.unregister_event_handlers( );
   }
   
   @Override
   public
   void update_scoreboard( )
   {
-    //fixme: store current length in model? it's literally there. >:(
-    int scoreboard_row_index = this.match.map( ).teams( ).size( ) + 3;
-    
-    this.scoreboard.set_row( scoreboard_row_index--, " " );
-    this.scoreboard.set_row(
-      scoreboard_row_index--,
-      "  " + ChatColor.AQUA + this.display_name( ) );
-    this.scoreboard.set_row( scoreboard_row_index--, ChatColor.LIGHT_PURPLE + " points remaining" );
+    this.match.scoreboard( )
+      .first( )
+      .set( "   " )
+      .next( )
+      .set( ChatColor.GRAY + "♦" + ChatColor.AQUA + this.display_name( ) )
+      .next( )
+      .set( ChatColor.LIGHT_PURPLE + " points remaining" );
     
     for ( MiraTeamModel team : this.match.map( ).teams( ) )
     {
-      String team_scoreboard_entry = this.pulse( ).model( ).message(
-        "match.scoreboard.game.team_score_format", team.coloured_display_name( ),
+      String team_score = this.pulse( ).model( ).message(
+        "match.scoreboard.game.team_score_format",
+        team.display_name( ),
         String.valueOf( this.team_points( team.label( ) ) ) );
+      String point_loss_info = "";
       
-      this.scoreboard.set_row( scoreboard_row_index--, team_scoreboard_entry );
+      if ( team == this.point_loss_target_team )
+      {
+        point_loss_info = ChatColor.DARK_GRAY + " [☠x%d]".formatted( this.point_loss_multiplier );
+      }
+      
+      this.match.scoreboard( )
+        .next( )
+        .set( "%s%s".formatted( team_score, point_loss_info ) );
     }
     
-    this.scoreboard.set_row( scoreboard_row_index, "  " );
-    
-    assert scoreboard_row_index == 0;
+    this.match.scoreboard( ).next( ).set( " " );
   }
   
   @Override
   protected
   void task_timer_tick( )
   {
-    // not required for team death match.
+    // not required for life pool.
   }
 }

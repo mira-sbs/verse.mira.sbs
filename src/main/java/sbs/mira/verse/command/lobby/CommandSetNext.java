@@ -4,6 +4,7 @@ import app.ashcon.intake.Command;
 import app.ashcon.intake.parametric.annotation.Switch;
 import org.bukkit.command.CommandSender;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.model.MiraCommandModel;
 import sbs.mira.verse.MiraVersePulse;
 
@@ -33,13 +34,13 @@ class CommandSetNext
   public
   void set_next(
     @NotNull CommandSender sender,
-    String map_label,
+    @Nullable String map_label,
     @Switch ('u') boolean unset )
   {
     
     if ( unset )
     {
-      this.pulse( ).model( ).lobby( ).map_rotation( ).set_next_map( null );
+      this.pulse( ).model( ).lobby( ).map_rotation( ).unset_next_map();
       
       this.server( ).broadcastMessage( this.pulse( ).model( ).message(
         "match.map.set_next.unset",

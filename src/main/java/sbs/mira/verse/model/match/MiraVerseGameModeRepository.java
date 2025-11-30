@@ -6,10 +6,7 @@ import sbs.mira.core.model.match.MiraGameModeRepository;
 import sbs.mira.core.model.match.MiraMatch;
 import sbs.mira.core.model.match.MiraMatchModel;
 import sbs.mira.verse.MiraVersePulse;
-import sbs.mira.verse.model.match.game.mode.MiraCaptureTheFlag;
-import sbs.mira.verse.model.match.game.mode.MiraDestroyTheMonument;
-import sbs.mira.verse.model.match.game.mode.MiraLifePool;
-import sbs.mira.verse.model.match.game.mode.MiraTeamDeathMatch;
+import sbs.mira.verse.model.match.game.mode.*;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
@@ -30,6 +27,7 @@ class MiraVerseGameModeRepository
     this.repository.put( "ctf", MiraCaptureTheFlag.class );
     this.repository.put( "dtm", MiraDestroyTheMonument.class );
     this.repository.put( "lp", MiraLifePool.class );
+    this.repository.put( "koth", MiraKingOfTheHill.class );
   }
   
   @Override

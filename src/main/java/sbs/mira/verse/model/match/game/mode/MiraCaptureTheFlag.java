@@ -1,18 +1,26 @@
 package sbs.mira.verse.model.match.game.mode;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.Sound;
+import org.bukkit.event.EventHandler;
 import org.jetbrains.annotations.NotNull;
-import sbs.mira.core.model.map.MiraObjective;
+import sbs.mira.core.event.match.objective.MiraMatchFlagCapturedEvent;
+import sbs.mira.core.event.match.objective.MiraMatchFlagDroppedEvent;
+import sbs.mira.core.event.match.objective.MiraMatchFlagStealEvent;
+import sbs.mira.core.event.match.objective.MiraMatchObjectiveFulfilEvent;
+import sbs.mira.core.model.MiraEventHandlerModel;
+import sbs.mira.core.model.map.MiraTeamModel;
+import sbs.mira.core.model.map.objective.standard.MiraObjectiveBuildMonument;
 import sbs.mira.core.model.map.objective.standard.MiraObjectiveCapturableFlagBlock;
 import sbs.mira.core.model.match.MiraGameModeModel;
 import sbs.mira.core.model.match.MiraGameModeType;
 import sbs.mira.core.model.match.MiraMatch;
 import sbs.mira.core.utility.MiraEntityUtility;
 import sbs.mira.verse.MiraVersePulse;
-import sbs.mira.verse.model.map.objective.MiraObjectiveCaptureAndBuildFlag;
+import sbs.mira.verse.model.map.objective.MiraRequirementCaptureAndBuildFlag;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * implementation of the capture the flag (ctf) game mode.
@@ -27,10 +35,10 @@ public
 class MiraCaptureTheFlag
   extends MiraGameModeModel<MiraVersePulse>
 {
-  private final static int FIREWORK_SPAWN_INTERVAL = 4;
+  private final static int FIREWORK_SPAWN_INTERVAL = 8;
   
   @NotNull
-  private final List<MiraObjectiveCaptureAndBuildFlag<?>> objectives;
+  private final List<MiraRequirementCaptureAndBuildFlag> objectives;
   private int firework_timer;
   private boolean enabled_quick_steal;
   
@@ -47,9 +55,9 @@ class MiraCaptureTheFlag
     
     this.objectives =
       this.match.map( ).objectives( ).stream( )
-        .filter( ( objective )->objective instanceof MiraObjectiveCaptureAndBuildFlag<?> )
-        .map( ( objective )->( MiraObjectiveCaptureAndBuildFlag<?> ) objective )
-        .collect( Collectors.toUnmodifiableList( ) );
+        .filter( ( objective )->objective instanceof MiraRequirementCaptureAndBuildFlag )
+        .map( ( objective )->( MiraRequirementCaptureAndBuildFlag ) objective )
+        .toList( );
     this.firework_timer = FIREWORK_SPAWN_INTERVAL;
     this.enabled_quick_steal = false;
   }
@@ -58,19 +66,111 @@ class MiraCaptureTheFlag
   public
   void activate( )
   {
+    this.objectives.forEach( ( objective )->objective.activate( this.match.world( ) ) );
+    
     super.activate( );
     
-    this.scoreboard.initialise( ( this.objectives.size( ) * 4 ) + 4 );
+    this.match.scoreboard( ).initialise( ( this.objectives.size( ) * 4 ) + 6 );
     this.update_scoreboard( );
     
-    this.objectives.forEach( ( objective )->objective.activate( this.match.world( ) ) );
+    final MiraCaptureTheFlag self = this;
+    
+    this.event_handler( new MiraEventHandlerModel<MiraMatchFlagStealEvent, MiraVersePulse>( this.pulse( ) )
+    {
+      @Override
+      @EventHandler
+      public
+      void handle_event( MiraMatchFlagStealEvent event )
+      {
+        this.server( ).getScheduler( ).runTask( this.pulse( ).plugin( ), self::update_scoreboard );
+        
+        MiraTeamModel ally_team = event.flag( ).capturing_team( );
+        
+        this.announce_event(
+          ally_team,
+          "match.objective.flag.steal.ally",
+          "match.objective.flag.steal.enemy",
+          Sound.ITEM_GOAT_HORN_SOUND_1,
+          1.25f,
+          Sound.ENTITY_PLAYER_LEVELUP,
+          0.75f,
+          event.player( ).display_name( ),
+          ally_team.color( ) + event.flag( ).name( ) );
+      }
+    } );
+    
+    this.event_handler( new MiraEventHandlerModel<MiraMatchFlagDroppedEvent, MiraVersePulse>( this.pulse( ) )
+    {
+      @Override
+      @EventHandler
+      public
+      void handle_event( MiraMatchFlagDroppedEvent event )
+      {
+        this.server( ).getScheduler( ).runTask( this.pulse( ).plugin( ), self::update_scoreboard );
+        
+        MiraTeamModel ally_team = event.flag( ).capturing_team( );
+        
+        this.announce_event(
+          ally_team,
+          "match.objective.flag.drop.ally",
+          "match.objective.flag.drop.enemy",
+          Sound.ITEM_GOAT_HORN_SOUND_3,
+          0.85f,
+          Sound.ENTITY_IRON_GOLEM_HURT,
+          0.75f,
+          event.player( ).display_name( ),
+          ally_team.color( ) + event.flag( ).name( ) );
+      }
+    } );
+    
+    this.event_handler( new MiraEventHandlerModel<MiraMatchFlagCapturedEvent, MiraVersePulse>( this.pulse( ) )
+    {
+      @Override
+      @EventHandler
+      public
+      void handle_event( MiraMatchFlagCapturedEvent event )
+      {
+        MiraObjectiveBuildMonument<?> monument = event.monument( );
+        MiraTeamModel capturing_team = monument.capturing_team( );
+        
+        this.pulse( ).model( ).lobby( ).match( ).game_mode( ).award_team_points(
+          capturing_team,
+          1,
+          " for capturing a flag" );
+        
+        this.server( ).getScheduler( ).runTask( this.pulse( ).plugin( ), self::update_scoreboard );
+      }
+    } );
+    
+    this.event_handler( new MiraEventHandlerModel<MiraMatchObjectiveFulfilEvent, MiraVersePulse>(
+      this.pulse( ) )
+    {
+      @Override
+      @EventHandler
+      public
+      void handle_event( MiraMatchObjectiveFulfilEvent event )
+      {
+        if ( self.objectives.stream( ).allMatch( MiraRequirementCaptureAndBuildFlag::fulfilled ) )
+        {
+          MiraTeamModel team = event.player( ).team( );
+          
+          int bonus_completion_points = self.objectives.size( );
+          
+          self.award_team_points(
+            team,
+            bonus_completion_points,
+            " for completing the match early" );
+          self.match.conclude_game( );
+        }
+      }
+    } );
   }
   
   @Override
   public
   void deactivate( )
   {
-    this.objectives.forEach( MiraObjective::deactivate );
+    this.objectives.forEach( MiraRequirementCaptureAndBuildFlag::deactivate );
     
     super.deactivate( );
   }
@@ -79,33 +179,42 @@ class MiraCaptureTheFlag
   public
   void update_scoreboard( )
   {
-    int scoreboard_row_index = this.objectives.size( ) * 4 + 5;
+    this.match.scoreboard( )
+      .first( )
+      .set( "   " )
+      .next( )
+      .set( ChatColor.GRAY + "♦" + ChatColor.AQUA + this.display_name( ) )
+      .next( )
+      .set( ChatColor.LIGHT_PURPLE + " points" );
     
-    this.scoreboard.set_row( --scoreboard_row_index, " " );
-    this.scoreboard.set_row( --scoreboard_row_index, "  flags " );
+    StringBuilder string_builder = new StringBuilder( " " );
     
-    for ( MiraObjectiveCaptureAndBuildFlag<?> objective : this.objectives )
+    for ( MiraTeamModel team : this.match.map( ).teams( ) )
     {
-      this.scoreboard.set_row( --scoreboard_row_index, objective.team_1_flag( ).description( ) );
-      this.scoreboard.set_row( --scoreboard_row_index, objective.team_2_flag( ).description( ) );
+      string_builder.append( team.color( ) );
+      string_builder.append( " [%d]".formatted( this.team_points( team.label( ) ) ) );
     }
     
-    this.scoreboard.set_row( --scoreboard_row_index, "  " );
-    this.scoreboard.set_row( --scoreboard_row_index, " captures " );
+    this.match.scoreboard( )
+      .next( )
+      .set( string_builder.toString( ) )
+      .next( )
+      .set( ChatColor.LIGHT_PURPLE + " status" );
     
-    for ( MiraObjectiveCaptureAndBuildFlag<?> objective : this.objectives )
+    for ( MiraRequirementCaptureAndBuildFlag objective : this.objectives )
     {
-      this.scoreboard.set_row(
-        --scoreboard_row_index,
-        objective.team_1_monument( ).description( ) );
-      this.scoreboard.set_row(
-        --scoreboard_row_index,
-        objective.team_2_monument( ).description( ) );
+      this.match.scoreboard( )
+        .next( )
+        .set( objective.team_2_flag( ).description( ) )
+        .next( )
+        .set( objective.team_1_monument( ).description( ) )
+        .next( )
+        .set( objective.team_1_flag( ).description( ) )
+        .next( )
+        .set( objective.team_2_monument( ).description( ) );
     }
     
-    this.scoreboard.set_row( scoreboard_row_index, "   " );
-    
-    assert scoreboard_row_index == 0;
+    this.match.scoreboard( ).next( ).set( " " );
   }
   
   @Override
@@ -116,17 +225,17 @@ class MiraCaptureTheFlag
     {
       this.firework_timer = FIREWORK_SPAWN_INTERVAL;
       
-      for ( MiraObjectiveCaptureAndBuildFlag<?> objective : this.objectives )
+      for ( MiraRequirementCaptureAndBuildFlag objective : this.objectives )
       {
         MiraObjectiveCapturableFlagBlock<?> team_1_flag = objective.team_1_flag( );
         MiraEntityUtility.spawn_firework(
           team_1_flag.firework_location( ),
-          team_1_flag.team( ).color( ) );
+          team_1_flag.capturing_team( ).color( ) );
         
         MiraObjectiveCapturableFlagBlock<?> team_2_flag = objective.team_2_flag( );
         MiraEntityUtility.spawn_firework(
           team_2_flag.firework_location( ),
-          team_2_flag.team( ).color( ) );
+          team_2_flag.capturing_team( ).color( ) );
       }
     }
     
@@ -136,7 +245,7 @@ class MiraCaptureTheFlag
       {
         this.enabled_quick_steal = true;
         
-        for ( MiraObjectiveCaptureAndBuildFlag<?> objective : this.objectives )
+        for ( MiraRequirementCaptureAndBuildFlag objective : this.objectives )
         {
           objective.team_1_flag( ).allow_quick_steal( );
           objective.team_2_flag( ).allow_quick_steal( );

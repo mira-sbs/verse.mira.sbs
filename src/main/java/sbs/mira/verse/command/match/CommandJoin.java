@@ -82,7 +82,7 @@ class CommandJoin
           
           for ( MiraTeamModel mira_team : this.pulse( ).model( ).lobby( ).match( ).map( ).teams( ) )
           {
-            if ( mira_team.display_name( ).toLowerCase( ).startsWith( preference.toLowerCase( ) ) )
+            if ( mira_team.name( ).toLowerCase( ).startsWith( preference.toLowerCase( ) ) )
             {
               preferred_team = mira_team;
               
